@@ -1,5 +1,5 @@
 name: Build ESP32-S3 LVGL
-on: [push, pull_request, workflow_dispatch] # workflow_dispatch pozwala odpalić ręcznie
+on: [push, pull_request, workflow_dispatch]
 
 jobs:
   build:
@@ -21,7 +21,11 @@ jobs:
       - name: Build MicroPython + LVGL
         run: |
           cd ports/esp32
-          make BOARD=ESP32_GENERIC_S3 BOARD_VARIANT=SPIRAM_OCTAL
+          # Wstrzykujemy parametry Flash i Partycji bezpośrednio do make
+          make BOARD=ESP32_GENERIC_S3 BOARD_VARIANT=SPIRAM_OCTAL \
+          CONFIG_ESPTOOLPY_FLASHSIZE_8MB=y \
+          CONFIG_PARTITION_TABLE_CUSTOM=y \
+          CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="../../../partitions-8mb.csv"
           
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
