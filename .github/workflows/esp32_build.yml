@@ -21,7 +21,6 @@ jobs:
       - name: Build MicroPython + LVGL
         run: |
           cd ports/esp32
-          # Wstrzykujemy parametry Flash i Partycji bezpośrednio do make
           make BOARD=ESP32_GENERIC_S3 BOARD_VARIANT=SPIRAM_OCTAL \
           CONFIG_ESPTOOLPY_FLASHSIZE_8MB=y \
           CONFIG_PARTITION_TABLE_CUSTOM=y \
