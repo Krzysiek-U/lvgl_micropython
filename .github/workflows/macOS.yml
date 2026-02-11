@@ -6,53 +6,35 @@ on:
   pull_request:
 
 jobs:
-
   build_macos:
     if: ${{ github.event_name != 'pull_request' || github.repository != github.event.pull_request.head.repo.full_name }}
     runs-on: macos-latest
-
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - uses: actions/setup-python@v5
-      with:
-        python-version: '3.11'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
 
-    - name: Install Dependencies
-      run: |
-        brew install --force ninja 
-        brew install --force sdl2
-        brew install --force libffi
-        git submodule update --init -- lib/pycparser
-        git submodule update --init --jobs 4 -- lib/micropython        
-        git submodule update --init --jobs 4 -- lib/lvgl
+      - name: Install Dependencies
+        run: |
+          brew install --force ninja 
+          brew install --force sdl2
+          brew install --force libffi
+          git submodule update --init -- lib/pycparser
+          git submodule update --init --jobs 4 -- lib/micropython        
+          git submodule update --init --jobs 4 -- lib/lvgl
 
-    # - name: Build STM32 port
-    #   run: python3 make.py stm32 submodules clean mpy_cross BOARD=STM32H7B3I_DK DISPLAY=rgb_display INDEV=gt911
+      - name: Build macOS port
+        run: python3 make.py macOS DISPLAY=sdl_display INDEV=sdl_pointer
 
-    # - name: Build Raspberry Pi PICO port
-    #   run: python3 make.py rp2 submodules clean mpy_cross BOARD=RPI_PICO DISPLAY=rgb_display INDEV=gt911
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lvgl_micropy_macos
+          path: build/lvgl_micropy_macos
+          if-no-files-found: error
 
-    - name: Build macOS port
-      run: python3 make.py macOS DISPLAY=sdl_display INDEV=sdl_pointer
-
-    - uses: actions/upload-artifact@v4
-      with:
-        name: lvgl_micropy_macos
-        path: build/lvgl_micropy_macos
-        if-no-files-found: ignore
-        
-
-name: Build ESP32
-
-on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
-
-jobs:
-  build-esp32:
+  build_esp32:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -60,7 +42,7 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Install dependencies
+      - name: Install Python dependencies
         run: |
           python3 -m pip install --upgrade pip
           pip install Pillow
@@ -68,9 +50,8 @@ jobs:
       - name: Build ESP32 port
         run: python3 make.py esp32
 
-      - name: Upload Artifact
+      - name: Upload ESP32 Artifact
         uses: actions/upload-artifact@v4
-        if: success()
         with:
           name: lvgl_micropy_esp32_s3
           path: |
