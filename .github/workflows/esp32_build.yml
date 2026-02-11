@@ -1,48 +1,31 @@
-name: Build ESP32-S3 LVGL
-on: [push, pull_request, workflow_dispatch]
+name: ESP32 build
+on:
+  push:
+  pull_request:
 
 jobs:
-  build:
+  build_esp32:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          submodules: 'recursive'
+          submodules: recursive
 
-      - name: Setup ESP-IDF
-        uses: espressif/install-esp-idf-action@v1
-        with:
-          version: v5.0.2
-
-      - name: Build MicroPython + LVGL
+      - name: Install Python dependencies
         run: |
-          ESP32_DIR=$(find . -path "*/ports/esp32" -type d | head -n 1)
-          MPY_CROSS_DIR=$(find . -name "mpy-cross" -type d | head -n 1)
-          
-          if [ -d "$MPY_CROSS_DIR" ]; then
-            make -C "$MPY_CROSS_DIR"
-          fi
-          
-          cd "$ESP32_DIR"
-          
-          cat <<EOF > partitions-8mb.csv
-          nvs,      data, nvs,     0x9000,  0x6000,
-          otadata,  data, ota,     0xf000,  0x2000,
-          phy_init, data, phy,     0x11000, 0x1000,
-          ota_0,    app,  ota_0,   0x20000, 0x400000,
-          vfs,      data, fat,     0x420000, 0x3E0000,
-          EOF
-          
-          mkdir -p boards
-          echo "CONFIG_ESPTOOLPY_FLASHSIZE_8MB=y" >> boards/sdkconfig
-          echo "CONFIG_PARTITION_TABLE_CUSTOM=y" >> boards/sdkconfig
-          echo "CONFIG_PARTITION_TABLE_CUSTOM_FILENAME=\"partitions-8mb.csv\"" >> boards/sdkconfig
-          
-          make BOARD=ESP32_GENERIC_S3 BOARD_VARIANT=SPIRAM_OCTAL
-          
-      - name: Upload Artifact
+          python3 -m pip install --upgrade pip
+          pip install Pillow
+
+      - name: Build ESP32 port
+        run: python3 make.py esp32 
+
+      - name: Upload ESP32 Artifact
         uses: actions/upload-artifact@v4
+        if: always()
         with:
-          name: micropython-esp32s3-lvgl
-          path: "**/firmware.bin"
+          name: lvgl_micropy_esp32
+          path: |
+            **/build/*.bin
+            **/build/*.uf2
+          if-no-files-found: warn
