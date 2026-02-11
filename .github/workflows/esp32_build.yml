@@ -19,10 +19,11 @@ jobs:
         run: |
           pip install esptool Pillow
           
-          # 1. Znajdź folder portu, żeby tam wrzucić partycje
-          ESP32_PORT_DIR=$(find . -path "*/ports/esp32" -type d | head -n 1)
+          # 1. Znajdź folder portu (Bezpieczna metoda bez cudzysłowów)
+          ESP32_PORT_DIR=$(find . -type d -path "*/ports/esp32" | head -n 1)
+          echo "Folder portu to: $ESP32_PORT_DIR"
           
-          # 2. STWÓRZ TABELĘ PARTYDJI 16MB (4MB na program, reszta na dane)
+          # 2. STWÓRZ TABELĘ PARTYDJI 16MB
           cat <<EOF > "$ESP32_PORT_DIR/partitions-16mb.csv"
           nvs,      data, nvs,     0x9000,  0x6000,
           otadata,  data, ota,     0xf000,  0x2000,
@@ -31,22 +32,23 @@ jobs:
           vfs,      data, fat,     0x420000, 0xBE0000,
           EOF
 
-          # 3. WYMUŚ UŻYCIE TEJ TABELI (Wpisujemy do sdkconfig przed kompilacją)
+          # 3. WYMUŚ UŻYCIE TEJ TABELI (Wstrzykujemy do sdkconfig)
+          mkdir -p "$ESP32_PORT_DIR/boards"
           echo "CONFIG_PARTITION_TABLE_CUSTOM=y" >> "$ESP32_PORT_DIR/boards/sdkconfig"
           echo "CONFIG_PARTITION_TABLE_CUSTOM_FILENAME=\"partitions-16mb.csv\"" >> "$ESP32_PORT_DIR/boards/sdkconfig"
           echo "CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y" >> "$ESP32_PORT_DIR/boards/sdkconfig"
 
-          # 4. BUDOWANIE (Teraz kompilator nie powinien krzyczeć o brak miejsca)
+          # 4. BUDOWANIE (Używamy skryptu autora make.py)
           python3 make.py esp32 BOARD=ESP32_GENERIC_S3 BOARD_VARIANT=SPIRAM_OCTAL DISPLAY=st77916 INDEV=gt911
           
-          # 5. SZUKANIE SKŁADNIKÓW
+          # 5. SZUKANIE SKŁADNIKÓW DO SKLEJENIA
           BOOT=$(find . -name "bootloader.bin" | head -n 1)
           PART=$(find . -name "partition-table.bin" | head -n 1)
           APP=$(find . -name "lvgl_micropy_esp32.bin" -o -name "micropython.bin" | head -n 1)
           
-          echo "ZNALEZIONO: BOOT=$BOOT, PART=$PART, APP=$APP"
+          echo "ZNALEZIONO SKŁADNIKI: BOOT=$BOOT, PART=$PART, APP=$APP"
 
-          # 6. RĘCZNE SKLEJANIE
+          # 6. RĘCZNE SKLEJANIE (Finał - 3.36MB plik dla adresu 0x0)
           esptool.py --chip esp32s3 merge_bin \
             -o FIRMWARE_GOTOWY_NA_0x0.bin \
             --flash_mode dio --flash_size 16MB \
@@ -54,10 +56,8 @@ jobs:
             0x8000 "$PART" \
             0x10000 "$APP"
 
-
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: WYNIK_FINALNY_3MB
+          name: micropython-esp32s3-n16r8-firmware
           path: FIRMWARE_GOTOWY_NA_0x0.bin
-          if-no-files-found: error
