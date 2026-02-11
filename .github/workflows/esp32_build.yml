@@ -25,20 +25,33 @@ jobs:
 
       - name: Build ESP32 port
         run: |
-          # 1. Budujemy z flagami dla Twojego procesora S3-N16R8
-          # Wymuszamy 16MB Flash i Octal RAM oraz scalenie plików w jeden firmware.bin
+          # 1. Budowanie portu z flagami dla Twojego N16R8
           python3 make.py esp32 BOARD=ESP32_GENERIC_S3 BOARD_VARIANT=SPIRAM_OCTAL \
           DISPLAY=rgb_display INDEV=gt911 \
           FLASH_SIZE=16MB \
           MERGE_BIN=1
+
+          # 2. RĘCZNE ŁĄCZENIE (Gwarancja poprawnego pliku firmware.bin)
+          # Szukamy gdzie skrypt wygenerował pliki binarne
+          BUILD_DIR=$(find . -name "build-ESP32_GENERIC_S3-SPIRAM_OCTAL" -type d | head -n 1)
+          if [ -z "$BUILD_DIR" ]; then BUILD_DIR=$(find . -name "build" -type d | head -n 1); fi
+          
+          echo "Znaleziony folder build: $BUILD_DIR"
+          
+          # Sklejamy wszystko w jeden plik firmware.bin (3 MB - 4 MB)
+          esptool.py --chip esp32s3 merge_bin \
+            -o "$BUILD_DIR/firmware.bin" \
+            --flash_mode dio --flash_size 16MB \
+            0x0000 "$BUILD_DIR/bootloader/bootloader.bin" \
+            0x8000 "$BUILD_DIR/partition_table/partition-table.bin" \
+            0x10000 "$BUILD_DIR/micropython.bin"
 
       - name: Upload ESP32 Artifact
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: lvgl_micropy_esp32_N16R8_firmware
-          # Szukamy konkretnie scalonego pliku firmware.bin, który ma ok. 3-4MB
+          # Pobieramy konkretnie scalony plik firmware.bin
           path: |
-            **/build*/firmware.bin
-            **/build*/*.bin
+             **/firmware.bin
           if-no-files-found: error
