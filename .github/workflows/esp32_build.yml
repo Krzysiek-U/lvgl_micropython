@@ -1,7 +1,8 @@
-name: ESP32 build
+name: ESP32 build N16R8
 on:
   push:
   pull_request:
+  workflow_dispatch:
 
 jobs:
   build_esp32:
@@ -12,20 +13,32 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Install Python dependencies
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
         run: |
           python3 -m pip install --upgrade pip
-          pip install Pillow
+          pip install Pillow esptool wheel espressif-idf
 
       - name: Build ESP32 port
-        run: python3 make.py esp32 
+        run: |
+          # 1. Budujemy z flagami dla Twojego procesora S3-N16R8
+          # Wymuszamy 16MB Flash i Octal RAM oraz scalenie plików w jeden firmware.bin
+          python3 make.py esp32 BOARD=ESP32_GENERIC_S3 BOARD_VARIANT=SPIRAM_OCTAL \
+          DISPLAY=rgb_display INDEV=gt911 \
+          FLASH_SIZE=16MB \
+          MERGE_BIN=1
 
       - name: Upload ESP32 Artifact
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: lvgl_micropy_esp32
+          name: lvgl_micropy_esp32_N16R8_firmware
+          # Szukamy konkretnie scalonego pliku firmware.bin, który ma ok. 3-4MB
           path: |
-            **/build/*.bin
-            **/build/*.uf2
-          if-no-files-found: warn
+            **/build*/firmware.bin
+            **/build*/*.bin
+          if-no-files-found: error
