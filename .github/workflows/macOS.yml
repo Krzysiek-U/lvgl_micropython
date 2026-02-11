@@ -41,7 +41,17 @@ jobs:
         name: lvgl_micropy_macos
         path: build/lvgl_micropy_macos
         if-no-files-found: ignore
+        
 
+name: Build ESP32
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
   build-esp32:
     runs-on: ubuntu-latest
     steps:
@@ -56,9 +66,7 @@ jobs:
           pip install Pillow
 
       - name: Build ESP32 port
-        run: |
-          # Tutaj upewnij się, że masz zainstalowane ESP-IDF lub użyj właściwej komendy
-          python3 make.py esp32 DISPLAY=sdl_display INDEV=sdl_pointer
+        run: python3 make.py esp32
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
@@ -69,5 +77,3 @@ jobs:
             **/*.bin
             **/*.uf2
           if-no-files-found: error
-
-
