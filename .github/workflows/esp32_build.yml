@@ -19,7 +19,7 @@ jobs:
         run: |
           pip install esptool Pillow
           
-          # 1. Znajdź folder portu (Bezpieczna metoda bez cudzysłowów)
+          # 1. Znajdź folder portu (Bezpieczna metoda)
           ESP32_PORT_DIR=$(find . -type d -path "*/ports/esp32" | head -n 1)
           echo "Folder portu to: $ESP32_PORT_DIR"
           
@@ -32,29 +32,30 @@ jobs:
           vfs,      data, fat,     0x420000, 0xBE0000,
           EOF
 
-          # 3. WYMUŚ UŻYCIE TEJ TABELI (Wstrzykujemy do sdkconfig)
+          # 3. WYMUŚ UŻYCIE TEJ TABELI
           mkdir -p "$ESP32_PORT_DIR/boards"
           echo "CONFIG_PARTITION_TABLE_CUSTOM=y" >> "$ESP32_PORT_DIR/boards/sdkconfig"
           echo "CONFIG_PARTITION_TABLE_CUSTOM_FILENAME=\"partitions-16mb.csv\"" >> "$ESP32_PORT_DIR/boards/sdkconfig"
           echo "CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y" >> "$ESP32_PORT_DIR/boards/sdkconfig"
 
-          # 4. BUDOWANIE (Używamy skryptu autora make.py)
+          # 4. BUDOWANIE
           python3 make.py esp32 BOARD=ESP32_GENERIC_S3 BOARD_VARIANT=SPIRAM_OCTAL DISPLAY=st77916 INDEV=gt911
           
-          # 5. SZUKANIE SKŁADNIKÓW DO SKLEJENIA
+          # 5. SZUKANIE SKŁADNIKÓW
           BOOT=$(find . -name "bootloader.bin" | head -n 1)
           PART=$(find . -name "partition-table.bin" | head -n 1)
           APP=$(find . -name "lvgl_micropy_esp32.bin" -o -name "micropython.bin" | head -n 1)
           
-          echo "ZNALEZIONO SKŁADNIKI: BOOT=$BOOT, PART=$PART, APP=$APP"
+          echo "ZNALEZIONO: BOOT=$BOOT, PART=$PART, APP=$APP"
 
-          # 6. RĘCZNE SKLEJANIE (Finał - 3.36MB plik dla adresu 0x0)
+          # 6. RĘCZNE SKLEJANIE
           esptool.py --chip esp32s3 merge_bin \
             -o FIRMWARE_GOTOWY_NA_0x0.bin \
             --flash_mode dio --flash_size 16MB \
             0x0000 "$BOOT" \
             0x8000 "$PART" \
             0x10000 "$APP"
+
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
