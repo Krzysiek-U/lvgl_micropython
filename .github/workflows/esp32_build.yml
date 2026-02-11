@@ -8,13 +8,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          submodules: 'recursive' # Pobiera bibliotekę LVGL
+          submodules: 'recursive'
 
       - name: Setup ESP-IDF
         uses: espressif/install-esp-idf-action@v1
         with:
-          esp_idf_version: v5.0.2 # Najstabilniejsza wersja dla S3
-          target: esp32s3
+          version: v5.0.2 # Poprawiona nazwa parametru
 
       - name: Build mpy-cross
         run: make -C mpy-cross
@@ -22,7 +21,7 @@ jobs:
       - name: Build MicroPython + LVGL
         run: |
           cd ports/esp32
-          # Tu wymuszamy obsługę Twojego Octal-PSRAM (S3R8)
+          # Budujemy wsparcie dla Twojego chipa S3R8
           make BOARD=ESP32_GENERIC_S3 BOARD_VARIANT=SPIRAM_OCTAL
           
       - name: Upload Artifact
