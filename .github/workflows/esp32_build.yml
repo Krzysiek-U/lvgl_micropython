@@ -1,57 +1,46 @@
-name: ESP32 build N16R8
-on:
-  push:
-  pull_request:
-  workflow_dispatch:
+name: ESP32 build N16R8 FINAL
+on: [push, pull_request, workflow_dispatch]
 
 jobs:
   build_esp32:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
         with:
           submodules: recursive
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - name: Setup ESP-IDF
+        uses: espressif/install-esp-idf-action@v1
         with:
-          python-version: '3.10'
+          version: v5.0.2
 
-      - name: Install dependencies
+      - name: Build MicroPython + LVGL
         run: |
-          python3 -m pip install --upgrade pip
-          pip install Pillow esptool wheel espressif-idf
-
-      - name: Build ESP32 port
-        run: |
-          # 1. Budowanie portu z flagami dla Twojego N16R8
-          python3 make.py esp32 BOARD=ESP32_GENERIC_S3 BOARD_VARIANT=SPIRAM_OCTAL \
-          DISPLAY=rgb_display INDEV=gt911 \
-          FLASH_SIZE=16MB \
-          MERGE_BIN=1
-
-          # 2. RĘCZNE ŁĄCZENIE (Gwarancja poprawnego pliku firmware.bin)
-          # Szukamy gdzie skrypt wygenerował pliki binarne
-          BUILD_DIR=$(find . -name "build-ESP32_GENERIC_S3-SPIRAM_OCTAL" -type d | head -n 1)
-          if [ -z "$BUILD_DIR" ]; then BUILD_DIR=$(find . -name "build" -type d | head -n 1); fi
+          # 1. Znajdź folder portu
+          ESP32_DIR=$(find . -path "*/ports/esp32" -type d | head -n 1)
+          cd "$ESP32_DIR"
           
-          echo "Znaleziony folder build: $BUILD_DIR"
+          # 2. STWÓRZ TABELĘ PARTYDJI 16MB NA MIEJSCU
+          cat <<EOF > partitions-16mb.csv
+          nvs,      data, nvs,     0x9000,  0x6000,
+          otadata,  data, ota,     0xf000,  0x2000,
+          phy_init, data, phy,     0x11000, 0x1000,
+          ota_0,    app,  ota_0,   0x20000, 0x400000,
+          vfs,      data, fat,     0x420000, 0xBE0000,
+          EOF
           
-          # Sklejamy wszystko w jeden plik firmware.bin (3 MB - 4 MB)
-          esptool.py --chip esp32s3 merge_bin \
-            -o "$BUILD_DIR/firmware.bin" \
-            --flash_mode dio --flash_size 16MB \
-            0x0000 "$BUILD_DIR/bootloader/bootloader.bin" \
-            0x8000 "$BUILD_DIR/partition_table/partition-table.bin" \
-            0x10000 "$BUILD_DIR/micropython.bin"
-
-      - name: Upload ESP32 Artifact
+          # 3. WYMUSZENIE USTAWIEŃ (N16R8 / Octal RAM)
+          mkdir -p boards
+          echo "CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y" >> boards/sdkconfig
+          echo "CONFIG_PARTITION_TABLE_CUSTOM=y" >> boards/sdkconfig
+          echo "CONFIG_PARTITION_TABLE_CUSTOM_FILENAME=\"partitions-16mb.csv\"" >> boards/sdkconfig
+          
+          # 4. BUDOWANIE (Metoda oficjalna - to stworzy firmware.bin!)
+          make BOARD=ESP32_GENERIC_S3 BOARD_VARIANT=SPIRAM_OCTAL
+          
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
-        if: always()
         with:
-          name: lvgl_micropy_esp32_N16R8_firmware
-          # Pobieramy konkretnie scalony plik firmware.bin
-          path: |
-             **/firmware.bin
-          if-no-files-found: error
+          name: micropython-esp32s3-n16r8-lvgl
+          path: "**/firmware.bin"
