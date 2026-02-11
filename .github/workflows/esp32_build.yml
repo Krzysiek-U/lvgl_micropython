@@ -1,4 +1,4 @@
-name: ESP32 build N16R8 FINAL MERGE
+name: ESP32 FINAL MERGE N16R8
 on: [push, pull_request, workflow_dispatch]
 
 jobs:
@@ -15,23 +15,28 @@ jobs:
         with:
           version: v5.0.2
 
-      - name: Build
+      - name: Build and Force Merge
         run: |
-          # 1. Budujemy tak jak chce autor (to wygeneruje pliki w różnych folderach)
+          # 1. Instalacja narzędzi
           pip install esptool Pillow
+          
+          # 2. Budowanie według autora
           python3 make.py esp32 BOARD=ESP32_GENERIC_S3 BOARD_VARIANT=SPIRAM_OCTAL
           
-          # 2. SZUKAMY SKŁADNIKÓW (Bootloader, Partition Table, App)
+          # 3. SZUKANIE SKŁADNIKÓW (Nawet jeśli są głęboko ukryte)
           BOOT=$(find . -name "bootloader.bin" | head -n 1)
           PART=$(find . -name "partition-table.bin" | head -n 1)
-          APP=$(find . -name "micropython.bin" -o -name "lvgl_micropy_esp32.bin" | head -n 1)
+          # Szukamy Twojego pliku 1.47MB
+          APP=$(find . -name "*.bin" -size +1M | head -n 1)
           
-          echo "Znaleziono: BOOT=$BOOT, PART=$PART, APP=$APP"
-          
-          # 3. RĘCZNE SKLEJANIE W JEDEN PLIK (MERGE)
-          # To stworzy plik, który ma wszystko i zadziała na adresie 0x0
+          echo "ZNALEZIONO PLIKI:"
+          echo "BOOTLOADER: $BOOT"
+          echo "PARTYCJE: $PART"
+          echo "APLIKACJA: $APP"
+
+          # 4. RĘCZNE SKLEJANIE (To stworzy plik > 3MB dla adresu 0x0)
           esptool.py --chip esp32s3 merge_bin \
-            -o FIRMWARE_GOTOWY.bin \
+            -o GOTOWY_SYSTEM.bin \
             --flash_mode dio --flash_size 16MB \
             0x0000 "$BOOT" \
             0x8000 "$PART" \
@@ -40,5 +45,5 @@ jobs:
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: micropython-esp32s3-firmware-merged
-          path: FIRMWARE_GOTOWY.bin
+          name: micropython-esp32s3-merged-firmware
+          path: GOTOWY_SYSTEM.bin
