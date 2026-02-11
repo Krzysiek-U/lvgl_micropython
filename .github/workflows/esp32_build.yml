@@ -17,32 +17,43 @@ jobs:
 
       - name: Build and Manual Merge
         run: |
-          # 1. Instalacja niezbędnych narzędzi
           pip install esptool Pillow
           
-          # 2. Uruchomienie skryptu autora z Twoimi parametrami (S3R8 + ST77916)
-          # Używamy flagi SPIRAM_OCTAL dla Twojego chipa R8
+          # 1. Znajdź folder portu, żeby tam wrzucić partycje
+          ESP32_PORT_DIR=$(find . -path "*/ports/esp32" -type d | head -n 1)
+          
+          # 2. STWÓRZ TABELĘ PARTYDJI 16MB (4MB na program, reszta na dane)
+          cat <<EOF > "$ESP32_PORT_DIR/partitions-16mb.csv"
+          nvs,      data, nvs,     0x9000,  0x6000,
+          otadata,  data, ota,     0xf000,  0x2000,
+          phy_init, data, phy,     0x11000, 0x1000,
+          ota_0,    app,  ota_0,   0x20000, 0x400000,
+          vfs,      data, fat,     0x420000, 0xBE0000,
+          EOF
+
+          # 3. WYMUŚ UŻYCIE TEJ TABELI (Wpisujemy do sdkconfig przed kompilacją)
+          echo "CONFIG_PARTITION_TABLE_CUSTOM=y" >> "$ESP32_PORT_DIR/boards/sdkconfig"
+          echo "CONFIG_PARTITION_TABLE_CUSTOM_FILENAME=\"partitions-16mb.csv\"" >> "$ESP32_PORT_DIR/boards/sdkconfig"
+          echo "CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y" >> "$ESP32_PORT_DIR/boards/sdkconfig"
+
+          # 4. BUDOWANIE (Teraz kompilator nie powinien krzyczeć o brak miejsca)
           python3 make.py esp32 BOARD=ESP32_GENERIC_S3 BOARD_VARIANT=SPIRAM_OCTAL DISPLAY=st77916 INDEV=gt911
           
-          # 3. DYNAMICZNE SZUKANIE SKŁADNIKÓW (make.py chowa je głęboko w lib/micropython)
+          # 5. SZUKANIE SKŁADNIKÓW
           BOOT=$(find . -name "bootloader.bin" | head -n 1)
           PART=$(find . -name "partition-table.bin" | head -n 1)
-          # Szukamy pliku aplikacji (może mieć różną nazwę w zależności od fazy buildu)
           APP=$(find . -name "lvgl_micropy_esp32.bin" -o -name "micropython.bin" | head -n 1)
           
-          echo "ZNALEZIONO SKŁADNIKI DLA S3:"
-          echo "BOOTLOADER: $BOOT"
-          echo "PARTYCJE: $PART"
-          echo "APLIKACJA: $APP"
+          echo "ZNALEZIONO: BOOT=$BOOT, PART=$PART, APP=$APP"
 
-          # 4. RĘCZNE SKLEJANIE (To rozwiązuje błąd 0xffffffff)
-          # Tworzymy jeden plik firmware, który ma w sobie wszystko
+          # 6. RĘCZNE SKLEJANIE
           esptool.py --chip esp32s3 merge_bin \
             -o FIRMWARE_GOTOWY_NA_0x0.bin \
             --flash_mode dio --flash_size 16MB \
             0x0000 "$BOOT" \
             0x8000 "$PART" \
             0x10000 "$APP"
+
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
