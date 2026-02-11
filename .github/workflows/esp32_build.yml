@@ -16,16 +16,25 @@ jobs:
           version: v5.0.2
 
       - name: Build mpy-cross
-        run: make -C mpy-cross
+        run: |
+          # Sprawdza gdzie jest mpy-cross i buduje go tylko jeśli istnieje
+          if [ -d "mpy-cross" ]; then
+            make -C mpy-cross
+          else
+            echo "mpy-cross folder not found, skipping..."
+          fi
 
       - name: Build MicroPython + LVGL
         run: |
           cd ports/esp32
+          
+          # WYMUSZENIE USTAWIEŃ: To rozwiązuje błąd "region factory overflowed"
+          echo "CONFIG_ESPTOOLPY_FLASHSIZE_8MB=y" >> boards/sdkconfig
+          echo "CONFIG_PARTITION_TABLE_CUSTOM=y" >> boards/sdkconfig
+          echo "CONFIG_PARTITION_TABLE_CUSTOM_FILENAME=\"../../../partitions-8mb.csv\"" >> boards/sdkconfig
+          
+          # Budowanie właściwego obrazu dla Twojego S3R8
           make BOARD=ESP32_GENERIC_S3 BOARD_VARIANT=SPIRAM_OCTAL
-          CONFIG_ESPTOOLPY_FLASHSIZE_8MB=y
-          CONFIG_PARTITION_TABLE_CUSTOM=y
-          CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="../../../partitions-8mb.csv"
-
           
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
