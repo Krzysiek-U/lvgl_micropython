@@ -63,17 +63,7 @@ jobs:
         git submodule update --init --jobs 4 -- lib/micropython        
         git submodule update --init --jobs 4 -- lib/lvgl        
 
-    - name: Cached Deps
-      id: cache-deps
-      uses: actions/cache@v4
-      with:
-        path: |
-          lib/esp-idf
-          ~/.espressif
-        key: ${{ runner.os }}-v5-deps
-
-    - name: Get Build Deps
-      if: steps.cache-deps.outputs.cache-hit != 'true'
+    - name: Get ESP-IDF
       run: |
         git submodule update --init --jobs 4 -- lib/esp-idf
         cd lib/esp-idf
@@ -81,11 +71,9 @@ jobs:
 
     - name: Build ESP32 port
       run: |
-        # KLUCZ: Wszystko musi być w jednym bloku 'run', aby ścieżki działały
         export IDF_PATH="${GITHUB_WORKSPACE}/lib/esp-idf"
         source ./lib/esp-idf/export.sh
-        
-        # Używamy poprawnej nazwy wariantu dla Twojego RAMu: SPIRAM_OCTAL
+        # Budujemy Twój wsad S3R8 (Octal) ze sterownikami LCD i dotyku
         python3 make.py esp32 BOARD=ESP32_GENERIC_S3 BOARD_VARIANT=SPIRAM_OCTAL DISPLAY=rgb_display INDEV=gt911
 
     - name: Upload Artifact
@@ -93,4 +81,3 @@ jobs:
       with:
         name: lvgl_micropy_esp32_s3
         path: build/*.bin
-        if-no-files-found: ignore
