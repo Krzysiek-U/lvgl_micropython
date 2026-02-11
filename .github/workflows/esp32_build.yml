@@ -1,5 +1,5 @@
 name: Build ESP32-S3 LVGL
-on: [push, pull_request]
+on: [push, pull_request, workflow_dispatch] # workflow_dispatch pozwala odpalić ręcznie
 
 jobs:
   build:
@@ -13,7 +13,7 @@ jobs:
       - name: Setup ESP-IDF
         uses: espressif/install-esp-idf-action@v1
         with:
-          version: v5.0.2 # Poprawiona nazwa parametru
+          version: v5.0.2
 
       - name: Build mpy-cross
         run: make -C mpy-cross
@@ -21,7 +21,6 @@ jobs:
       - name: Build MicroPython + LVGL
         run: |
           cd ports/esp32
-          # Budujemy wsparcie dla Twojego chipa S3R8
           make BOARD=ESP32_GENERIC_S3 BOARD_VARIANT=SPIRAM_OCTAL
           
       - name: Upload Artifact
