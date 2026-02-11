@@ -952,4 +952,4 @@ Bit orders are a tuple of durations. The first 2 numbers define a bit as 0 and t
 https://github.com/fabse-hack/temp_humidity_micropython_lvgl
 
 
-
+ 
