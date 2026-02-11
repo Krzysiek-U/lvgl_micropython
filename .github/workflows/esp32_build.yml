@@ -26,18 +26,26 @@ jobs:
 
       - name: Build MicroPython + LVGL
         run: |
-          # Szukamy folderu esp32 (może być w micropython/ports/esp32)
-          ESP32_PATH=$(find . -name "esp32" -type d -path "*/ports/esp32" | head -n 1)
-          echo "Znaleziona ścieżka: $ESP32_PATH"
-          cd $ESP32_PATH
+          # Szukamy gdzie fizycznie jest folder esp32
+          target_dir=$(find . -name "esp32" -type d -path "*/ports/esp32" | head -n 1)
+          if [ -z "$target_dir" ]; then
+            echo "BŁĄD: Nie znaleziono folderu ports/esp32!"
+            exit 1
+          fi
+          echo "Wchodzę do: $target_dir"
+          cd "$target_dir"
           
           # WYMUSZENIE USTAWIEŃ (PANCERNA METODA)
+          # Musimy stworzyć plik sdkconfig jeśli nie istnieje
+          mkdir -p boards
+          touch boards/sdkconfig
           echo "CONFIG_ESPTOOLPY_FLASHSIZE_8MB=y" >> boards/sdkconfig
           echo "CONFIG_PARTITION_TABLE_CUSTOM=y" >> boards/sdkconfig
-          # Ścieżka do CSV musi być relatywna do folderu esp32
           echo "CONFIG_PARTITION_TABLE_CUSTOM_FILENAME=\"../../../partitions-8mb.csv\"" >> boards/sdkconfig
           
+          # Budujemy obraz
           make BOARD=ESP32_GENERIC_S3 BOARD_VARIANT=SPIRAM_OCTAL
+
 
           
       - name: Upload Artifact
