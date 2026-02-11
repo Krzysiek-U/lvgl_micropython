@@ -17,11 +17,19 @@ jobs:
 
       - name: Build MicroPython + LVGL
         run: |
-          # 1. Znajdź folder portu
+          # 1. Znajdź folder portu i mpy-cross
           ESP32_DIR=$(find . -path "*/ports/esp32" -type d | head -n 1)
+          MPY_CROSS_DIR=$(find . -name "mpy-cross" -type d | head -n 1)
+          
+          # 2. Buduj mpy-cross z wymuszeniem flag (naprawia błąd --64)
+          if [ -d "$MPY_CROSS_DIR" ]; then
+            make -C "$MPY_CROSS_DIR" CC=gcc CXX=g++
+          fi
+          
+          # 3. Wejdź do folderu esp32
           cd "$ESP32_DIR"
           
-          # 2. STWÓRZ PLIK PARTYDJI (Pancerna metoda)
+          # 4. STWÓRZ PLIK PARTYDJI NA MIEJSCU
           cat <<EOF > partitions-8mb.csv
           nvs,      data, nvs,     0x9000,  0x6000,
           otadata,  data, ota,     0xf000,  0x2000,
@@ -30,14 +38,13 @@ jobs:
           vfs,      data, fat,     0x420000, 0x3E0000,
           EOF
           
-          # 3. WYMUSZENIE USTAWIEŃ (N8R8 / Octal RAM)
+          # 5. WYMUSZENIE USTAWIEŃ (N8R8 / Octal RAM)
           mkdir -p boards
           echo "CONFIG_ESPTOOLPY_FLASHSIZE_8MB=y" >> boards/sdkconfig
           echo "CONFIG_PARTITION_TABLE_CUSTOM=y" >> boards/sdkconfig
           echo "CONFIG_PARTITION_TABLE_CUSTOM_FILENAME=\"partitions-8mb.csv\"" >> boards/sdkconfig
           
-          # 4. BUDOWANIE (Bez zewnętrznego mpy-cross, port sam go ogarnie)
-          make BOARD=ESP32_GENERIC_S3 BOARD_VARIANT=SPIRAM_OCTAL submodules
+          # 6. BUDOWANIE FIRMWARE
           make BOARD=ESP32_GENERIC_S3 BOARD_VARIANT=SPIRAM_OCTAL
           
       - name: Upload Artifact
