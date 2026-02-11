@@ -1,4 +1,4 @@
-name: ESP32 FINAL MERGE N16R8
+name: ESP32 build N16R8 FINAL MERGE
 on: [push, pull_request, workflow_dispatch]
 
 jobs:
@@ -15,28 +15,30 @@ jobs:
         with:
           version: v5.0.2
 
-      - name: Build and Force Merge
+      - name: Build and Manual Merge
         run: |
-          # 1. Instalacja narzędzi
+          # 1. Instalacja niezbędnych narzędzi
           pip install esptool Pillow
           
-          # 2. Budowanie według autora
-          python3 make.py esp32 BOARD=ESP32_GENERIC_S3 BOARD_VARIANT=SPIRAM_OCTAL
+          # 2. Uruchomienie skryptu autora z Twoimi parametrami (S3R8 + ST77916)
+          # Używamy flagi SPIRAM_OCTAL dla Twojego chipa R8
+          python3 make.py esp32 BOARD=ESP32_GENERIC_S3 BOARD_VARIANT=SPIRAM_OCTAL DISPLAY=st77916 INDEV=gt911
           
-          # 3. SZUKANIE SKŁADNIKÓW (Nawet jeśli są głęboko ukryte)
+          # 3. DYNAMICZNE SZUKANIE SKŁADNIKÓW (make.py chowa je głęboko w lib/micropython)
           BOOT=$(find . -name "bootloader.bin" | head -n 1)
           PART=$(find . -name "partition-table.bin" | head -n 1)
-          # Szukamy Twojego pliku 1.47MB
-          APP=$(find . -name "*.bin" -size +1M | head -n 1)
+          # Szukamy pliku aplikacji (może mieć różną nazwę w zależności od fazy buildu)
+          APP=$(find . -name "lvgl_micropy_esp32.bin" -o -name "micropython.bin" | head -n 1)
           
-          echo "ZNALEZIONO PLIKI:"
+          echo "ZNALEZIONO SKŁADNIKI DLA S3:"
           echo "BOOTLOADER: $BOOT"
           echo "PARTYCJE: $PART"
           echo "APLIKACJA: $APP"
 
-          # 4. RĘCZNE SKLEJANIE (To stworzy plik > 3MB dla adresu 0x0)
+          # 4. RĘCZNE SKLEJANIE (To rozwiązuje błąd 0xffffffff)
+          # Tworzymy jeden plik firmware, który ma w sobie wszystko
           esptool.py --chip esp32s3 merge_bin \
-            -o GOTOWY_SYSTEM.bin \
+            -o FIRMWARE_GOTOWY_NA_0x0.bin \
             --flash_mode dio --flash_size 16MB \
             0x0000 "$BOOT" \
             0x8000 "$PART" \
@@ -45,5 +47,5 @@ jobs:
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: micropython-esp32s3-merged-firmware
-          path: GOTOWY_SYSTEM.bin
+          name: micropython-esp32s3-st77916-firmware
+          path: FIRMWARE_GOTOWY_NA_0x0.bin
