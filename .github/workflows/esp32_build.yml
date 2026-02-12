@@ -22,11 +22,8 @@ jobs:
 
       - name: Build and Manual Merge
         run: |
-          git submodule update --init --jobs 4 -- lib/esp-idf
-          cd lib/esp-idf
-          ./install.sh esp32s3
-          source ./export.sh
-          cd ../..
+          export IDF_PATH=$(pwd)/lib/esp-idf
+          source $IDF_PATH/export.sh
           
           ESP32_PORT_DIR=$(find . -path "*/ports/esp32" -type d | head -n 1)
           
@@ -39,9 +36,16 @@ jobs:
           
           python3 make.py esp32 mpy_cross BOARD=ESP32_GENERIC_S3 BOARD_VARIANT=SPIRAM_OCTAL
           
-          BOOT=$(find . -name "bootloader.bin" | head -n 1)
-          PART=$(find . -name "partition-table.bin" | head -n 1)
-          APP=$(find . -name "lvgl_micropy_esp32.bin" -o -name "micropython.bin" | head -n 1)
+          BOOT=$(find . -name "bootloader.bin" | grep "S3" | head -n 1)
+          if [ -z "$BOOT" ]; then BOOT=$(find . -name "bootloader.bin" | head -n 1); fi
+          
+          PART=$(find . -name "partition-table.bin" | grep "S3" | head -n 1)
+          if [ -z "$PART" ]; then PART=$(find . -name "partition-table.bin" | head -n 1); fi
+          
+          APP=$(find . -name "micropython.bin" | grep "S3" | head -n 1)
+          if [ -z "$APP" ]; then APP=$(find . -name "micropython.bin" -o -name "lvgl_micropy_esp32.bin" | head -n 1); fi
+          
+          echo "SCIEZKI: $BOOT $PART $APP"
           
           esptool.py --chip esp32s3 merge_bin \
             -o FIRMWARE_GOTOWY_NA_0x0.bin \
