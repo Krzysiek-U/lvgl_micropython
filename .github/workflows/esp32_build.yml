@@ -29,31 +29,35 @@ jobs:
 
       - name: Build and Manual Merge
         run: |
+          pip install esptool Pillow wheel
+          
           # 1. Znajdź folder portu
           ESP32_PORT_DIR=$(find . -path "*/ports/esp32" -type d | head -n 1)
           
-          # 2. Tabela 16MB (8MB na program - potężny zapas na LVGL)
+          # 2. FIZYCZNE WYCIĘCIE BŁĘDNEJ FLAGI (To zabije błąd --64 u źródła)
+          # Przeszukujemy pliki .mk i usuwamy z nich wymuszanie 64-bitów
+          find . -name "*.mk" -exec sed -i 's/-m64//g' {} +
+          find . -name "*.mk" -exec sed -i 's/--64//g' {} +
+
+          # 3. Tabela 16MB (8MB na program)
           printf "nvs,data,nvs,0x9000,0x6000\notadata,data,ota,0xf000,0x2000\nphy_init,data,phy,0x11000,0x1000\nota_0,app,ota_0,0x20000,0x800000\nvfs,data,fat,0x820000,0x7E0000\n" > "$ESP32_PORT_DIR/partitions-16mb.csv"
           
-          # 3. WYMUŚ KONFIGURACJĘ
+          # 4. WYMUŚ KONFIGURACJĘ
           mkdir -p "$ESP32_PORT_DIR/boards"
           echo "CONFIG_PARTITION_TABLE_CUSTOM=y" >> "$ESP32_PORT_DIR/boards/sdkconfig"
           echo "CONFIG_PARTITION_TABLE_CUSTOM_FILENAME=\"partitions-16mb.csv\"" >> "$ESP32_PORT_DIR/boards/sdkconfig"
           echo "CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y" >> "$ESP32_PORT_DIR/boards/sdkconfig"
           
-          # 4. BUDOWANIE (Twoje poprawione CC=gcc w esp32.py teraz zadziała!)
+          # 5. BUDOWANIE (Teraz błąd as: unrecognized option --64 fizycznie nie może wystąpić)
           python3 make.py esp32 mpy_cross BOARD=ESP32_GENERIC_S3 BOARD_VARIANT=SPIRAM_OCTAL
           
-          # 5. SZUKANIE PLIKÓW
+          # 6. SKLEJANIE FINALNEGO PLIKU
           BOOT=$(find . -name "bootloader.bin" | grep "S3" | head -n 1)
-          [ -z "$BOOT" ] && BOOT=$(find . -name "bootloader.bin" | head -n 1)
           PART=$(find . -name "partition-table.bin" | grep "S3" | head -n 1)
-          [ -z "$PART" ] && PART=$(find . -name "partition-table.bin" | head -n 1)
           APP=$(find . -name "micropython.bin" | grep "S3" | head -n 1)
-          [ -z "$APP" ] && APP=$(find . -name "micropython.bin" -o -name "lvgl_micropy_esp32.bin" | head -n 1)
           
-          # 6. SKLEJANIE (Adres 0x20000 bo daliśmy 8MB na ota_0)
           esptool.py --chip esp32s3 merge_bin -o FIRMWARE_GOTOWY_NA_0x0.bin --flash_mode dio --flash_size 16MB 0x0000 "$BOOT" 0x8000 "$PART" 0x20000 "$APP"
+
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
