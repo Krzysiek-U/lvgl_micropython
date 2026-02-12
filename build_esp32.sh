@@ -1,18 +1,19 @@
 #!/bin/bash
 set -e
 
-# 1. Ścieżki i zmienne
+# 1. Ścieżki
 MPY_DIR="lib/micropython"
 MPY_CROSS_DIR="$MPY_DIR/mpy-cross"
 PORT_DIR="$MPY_DIR/ports/esp32"
-LVGL_MOD_DIR="../../../../lib/lvgl/lv_binding_micropython"
+# Wykrywamy pełną ścieżkę do modułów LVGL
+LV_MOD=$(pwd)/lib/lvgl/lv_binding_micropython
 
 # 2. NAPRAWA FLAG (To nam już działa!)
-echo "Usuwanie błędnych flag architektury..."
+echo "Naprawa flag architektury..."
 find "$MPY_DIR" -name "*.mk" -exec sed -i 's/-m64//g' {} +
 find "$MPY_DIR" -name "*.mk" -exec sed -i 's/--64//g' {} +
 
-# 3. PRZYGOTOWANIE MPY-CROSS (Bezpieczne pobranie)
+# 3. PRZYGOTOWANIE MPY-CROSS
 echo "Przygotowanie mpy-cross..."
 mkdir -p "$MPY_CROSS_DIR/build"
 curl -L https://github.com -o "$MPY_CROSS_DIR/mpy-cross"
@@ -29,20 +30,22 @@ ota_0,    app,  ota_0,   0x20000, 0x800000,
 vfs,      data, fat,     0x820000, 0x7E0000,
 EOF
 
-# 5. KOMPILACJA ESP32-S3 (Z poprawionymi modułami)
+# 5. KOMPILACJA ESP32-S3 (Z poprawionym USER_C_MODULES)
 echo "Kompilacja MicroPython..."
 cd "$PORT_DIR"
 
-# Wskazujemy moduły LVGL i ignorujemy błędy wersji "dirty"
+# Budujemy system, podając ścieżkę do folderu 'cmake' w bindingach LVGL
+# To jest jedyny poprawny sposób dla nowszych wersji ESP-IDF
 make BOARD=ESP32_GENERIC_S3 BOARD_VARIANT=SPIRAM_OCTAL \
-     USER_C_MODULES="$LVGL_MOD_DIR/ports/esp32/cmake/../.." \
+     USER_C_MODULES="$LV_MOD/ports/esp32/cmake" \
      V=1
 
 cd ../../../..
 
 # 6. SCALANIE
 echo "Sklejanie firmware..."
-BUILD_DIR=$(find "$PORT_DIR" -name "build-ESP32_GENERIC_S3-SPIRAM_OCTAL" -type d | head -n 1)
+# Szukamy folderu build - S3 tworzy go pod konkretną nazwą
+BUILD_DIR=$(find "$PORT_DIR" -maxdepth 1 -name "build-ESP32_GENERIC_S3-SPIRAM_OCTAL" -type d | head -n 1)
 
 esptool.py --chip esp32s3 merge_bin \
     -o FIRMWARE_GOTOWY_NA_0x0.bin \
