@@ -1,19 +1,19 @@
 #!/bin/bash
 set -e
 
-# 1. Ścieżki
+# 1. Ścieżki - absolutne
 ROOT_DIR=$(pwd)
 MPY_DIR="$ROOT_DIR/lib/micropython"
 MPY_CROSS_DIR="$MPY_DIR/mpy-cross"
 PORT_DIR="$MPY_DIR/ports/esp32"
 LV_MOD="$ROOT_DIR/lib/lvgl/lv_binding_micropython"
 
-# 2. NAPRAWA FLAG (To działa, nie ruszamy)
+# 2. NAPRAWA FLAG (Działa, nie ruszamy)
 echo "Naprawa flag architektury..."
 find "$MPY_DIR" -name "*.mk" -exec sed -i 's/-m64//g' {} +
 find "$MPY_DIR" -name "*.mk" -exec sed -i 's/--64//g' {} +
 
-# 3. PRZYGOTOWANIE MPY-CROSS (Bezpieczne pobranie)
+# 3. PRZYGOTOWANIE MPY-CROSS
 echo "Przygotowanie mpy-cross..."
 mkdir -p "$MPY_CROSS_DIR/build"
 curl -L https://github.com -o "$MPY_CROSS_DIR/mpy-cross"
@@ -30,16 +30,16 @@ ota_0,    app,  ota_0,   0x20000, 0x800000,
 vfs,      data, fat,     0x820000, 0x7E0000,
 EOF
 
-# 5. KLUCZOWA NAPRAWA PYTHONA DLA ESP-IDF
-echo "Instalacja brakujących narzędzi w venv..."
-# Wymuszamy instalację w środowisku, którego używa IDF
+# 5. KLUCZOWA NAPRAWA VENV DLA ESP-IDF
+echo "Naprawa pakietów Pythona w venv ESP-IDF..."
+# Celujemy bezpośrednio w Pythona z logów, któremu brakuje pkg_resources
 /tmp/esp/python/v5.0.2/venv/bin/python -m pip install --upgrade setuptools wheel
 
 # 6. KOMPILACJA ESP32-S3
-echo "Kompilacja MicroPython dla ESP32-S3..."
+echo "Kompilacja MicroPython..."
 cd "$PORT_DIR"
 
-# Używamy prostszej ścieżki do modułów - do folderu 'cmake'
+# Używamy ścieżki do folderu cmake
 make BOARD=ESP32_GENERIC_S3 \
      BOARD_VARIANT=SPIRAM_OCTAL \
      USER_C_MODULES="$LV_MOD/ports/esp32/cmake" \
