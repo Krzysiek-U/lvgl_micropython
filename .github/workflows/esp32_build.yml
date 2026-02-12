@@ -28,34 +28,27 @@ jobs:
           
           # 1. Znajdź foldery
           ESP32_PORT_DIR=$(find . -path "*/ports/esp32" -type d | head -n 1)
-          MPY_CROSS_DIR=$(find . -name "mpy-cross" -type d | head -n 1)
+          MPY_DIR=$(find . -type d -name "micropython" | head -n 1)
           
-          # 2. POBIERZ GOTOWY MPY-CROSS I ZABLOKUJ GO
-          mkdir -p "$MPY_CROSS_DIR/build"
-          curl -L https://github.com -o "$MPY_CROSS_DIR/mpy-cross"
-          chmod +x "$MPY_CROSS_DIR/mpy-cross"
-          cp "$MPY_CROSS_DIR/mpy-cross" "$MPY_CROSS_DIR/build/mpy-cross"
-
-          # 3. FAKE MAKE - Blokujemy próby kompilacji mpy-cross przez skrypt autora
-          echo '#!/bin/bash' > /tmp/fake_make
-          echo 'if [[ "$*" == *"-C"* && "$*" == *"mpy-cross"* ]]; then echo "Fake make: mpy-cross is ready"; exit 0; fi' >> /tmp/fake_make
-          echo 'exec /usr/bin/make "$@"' >> /tmp/fake_make
-          chmod +x /tmp/fake_make
-          export PATH="/tmp:$PATH"
+          # 2. BRUTALNE USUNIĘCIE FLAGI --64 ZE WSZYSTKICH PLIKÓW MK
+          # To fizycznie wycina powód błędu z plików konfiguracyjnych MicroPythona
+          find "$MPY_DIR" -name "*.mk" -exec sed -i 's/-m64//g' {} +
+          find "$MPY_DIR" -name "*.mk" -exec sed -i 's/--64//g' {} +
           
-          # 4. STWÓRZ TABELĘ (8MB na program)
+          # 3. STWÓRZ TABELĘ (8MB na program)
           printf "nvs,data,nvs,0x9000,0x6000\notadata,data,ota,0xf000,0x2000\nphy_init,data,phy,0x11000,0x1000\nota_0,app,ota_0,0x20000,0x800000\nvfs,data,fat,0x820000,0x7E0000\n" > "$ESP32_PORT_DIR/partitions-16mb.csv"
           
-          # 5. KONFIGURACJA
+          # 4. KONFIGURACJA
           mkdir -p "$ESP32_PORT_DIR/boards"
           echo "CONFIG_PARTITION_TABLE_CUSTOM=y" >> "$ESP32_PORT_DIR/boards/sdkconfig"
           echo "CONFIG_PARTITION_TABLE_CUSTOM_FILENAME=\"partitions-16mb.csv\"" >> "$ESP32_PORT_DIR/boards/sdkconfig"
           echo "CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y" >> "$ESP32_PORT_DIR/boards/sdkconfig"
           
-          # 6. BUDOWANIE (Teraz skrypt autora nie zepsuje mpy-cross)
-          python3 make.py esp32 BOARD=ESP32_GENERIC_S3 BOARD_VARIANT=SPIRAM_OCTAL
+          # 5. BUDOWANIE
+          # Używamy CC=gcc bezpośrednio w komendzie, żeby wymusić standard
+          python3 make.py esp32 BOARD=ESP32_GENERIC_S3 BOARD_VARIANT=SPIRAM_OCTAL LV_CFLAGS="-DCC=gcc"
           
-          # 7. SZUKANIE I SKLEJANIE
+          # 6. SZUKANIE I SKLEJANIE
           BOOT=$(find . -name "bootloader.bin" | grep "S3" | head -n 1)
           PART=$(find . -name "partition-table.bin" | grep "S3" | head -n 1)
           APP=$(find . -name "micropython.bin" | grep "S3" | head -n 1)
@@ -66,6 +59,7 @@ jobs:
             0x0000 "$BOOT" \
             0x8000 "$PART" \
             0x20000 "$APP"
+
 
 
 
