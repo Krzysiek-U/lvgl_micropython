@@ -19,27 +19,28 @@ jobs:
         run: |
           pip install esptool Pillow
           
-          # 1. Znajdź folder portu (Bezpieczna metoda)
+          # 1. Znajdź folder portu
           ESP32_PORT_DIR=$(find . -type d -path "*/ports/esp32" | head -n 1)
           echo "Folder portu to: $ESP32_PORT_DIR"
           
-          # 2. STWÓRZ TABELĘ PARTYDJI 16MB
+          # 2. STWÓRZ TABELĘ PARTYDJI 16MB (8MB na program dla bezpieczeństwa)
           cat <<EOF > "$ESP32_PORT_DIR/partitions-16mb.csv"
           nvs,      data, nvs,     0x9000,  0x6000,
           otadata,  data, ota,     0xf000,  0x2000,
           phy_init, data, phy,     0x11000, 0x1000,
-          ota_0,    app,  ota_0,   0x20000, 0x400000,
-          vfs,      data, fat,     0x420000, 0xBE0000,
+          ota_0,    app,  ota_0,   0x20000, 0x800000,
+          vfs,      data, fat,     0x820000, 0x7E0000,
           EOF
 
-          # 3. WYMUŚ UŻYCIE TEJ TABELI
+          # 3. WYMUŚ KONFIGURACJĘ
           mkdir -p "$ESP32_PORT_DIR/boards"
           echo "CONFIG_PARTITION_TABLE_CUSTOM=y" >> "$ESP32_PORT_DIR/boards/sdkconfig"
           echo "CONFIG_PARTITION_TABLE_CUSTOM_FILENAME=\"partitions-16mb.csv\"" >> "$ESP32_PORT_DIR/boards/sdkconfig"
           echo "CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y" >> "$ESP32_PORT_DIR/boards/sdkconfig"
 
-          # 4. BUDOWANIE
-          python3 make.py esp32 BOARD=ESP32_GENERIC_S3 BOARD_VARIANT=SPIRAM_OCTAL DISPLAY=st77916 INDEV=gt911
+          # 4. BUDOWANIE (Najpierw mpy_cross, potem esp32)
+          # Dodajemy parametr mpy_cross do skryptu autora
+          python3 make.py esp32 mpy_cross BOARD=ESP32_GENERIC_S3 BOARD_VARIANT=SPIRAM_OCTAL DISPLAY=st77916 INDEV=gt911
           
           # 5. SZUKANIE SKŁADNIKÓW
           BOOT=$(find . -name "bootloader.bin" | head -n 1)
@@ -48,13 +49,13 @@ jobs:
           
           echo "ZNALEZIONO: BOOT=$BOOT, PART=$PART, APP=$APP"
 
-          # 6. RĘCZNE SKLEJANIE
+          # 6. RĘCZNE SKLEJANIE (Adres 0x20000 bo powiększyliśmy partycję)
           esptool.py --chip esp32s3 merge_bin \
             -o FIRMWARE_GOTOWY_NA_0x0.bin \
             --flash_mode dio --flash_size 16MB \
             0x0000 "$BOOT" \
             0x8000 "$PART" \
-            0x10000 "$APP"
+            0x20000 "$APP"
 
 
       - name: Upload Artifact
