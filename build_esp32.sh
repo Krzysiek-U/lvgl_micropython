@@ -20,7 +20,7 @@ curl -L https://github.com -o "$MPY_CROSS_DIR/mpy-cross"
 chmod +x "$MPY_CROSS_DIR/mpy-cross"
 cp "$MPY_CROSS_DIR/mpy-cross" "$MPY_CROSS_DIR/build/mpy-cross"
 
-# 4. TWORZENIE TABELI PARTYDJI
+# 4. TWORZENIE PARTYDJI 16MB
 echo "Tworzenie partycji 16MB..."
 cat <<EOF > "$PORT_DIR/partitions-16mb.csv"
 nvs,      data, nvs,     0x9000,  0x6000,
@@ -30,9 +30,11 @@ ota_0,    app,  ota_0,   0x20000, 0x800000,
 vfs,      data, fat,     0x820000, 0x7E0000,
 EOF
 
-# 5. KLUCZOWA NAPRAWA ŚRODOWISKA PYTHON (Uderzenie w punkt)
-echo "Naprawa pkg_resources w venv ESP-IDF..."
-/tmp/esp/python/v5.0.2/venv/bin/python -m pip install --upgrade setuptools wheel
+# 5. KLUCZOWA NAPRAWA VENV (To rozwiązuje błąd Makefile:71)
+echo "Wstrzykiwanie setuptools do venv ESP-IDF..."
+# Wykrywamy ścieżkę do Pythona w venv i instalujemy tam setuptools
+IDF_PYTHON=$(which python)
+$IDF_PYTHON -m pip install --upgrade setuptools wheel
 
 # 6. KOMPILACJA ESP32-S3
 echo "Kompilacja MicroPython dla S3..."
