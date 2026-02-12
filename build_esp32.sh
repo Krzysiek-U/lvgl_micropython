@@ -32,14 +32,14 @@ EOF
 
 # 5. KLUCZOWA NAPRAWA PYTHONA DLA ESP-IDF
 echo "Naprawa pakietów Pythona dla ESP-IDF..."
-# Instalujemy setuptools tam, gdzie szuka go ESP-IDF (rozwiązuje błąd pkg_resources)
-pip install --upgrade setuptools
+# Instalujemy setuptools, bo bez nich idf.py rzuca błędem pkg_resources
+pip install --upgrade setuptools wheel
 
 # 6. KOMPILACJA ESP32-S3
 echo "Kompilacja MicroPython..."
 cd "$PORT_DIR"
 
-# Używamy prostszej ścieżki do modułów (folderu wyżej), co jest bardziej odporne na błędy cmake
+# Używamy ścieżki do folderu cmake, co jest standardem
 make BOARD=ESP32_GENERIC_S3 \
      BOARD_VARIANT=SPIRAM_OCTAL \
      USER_C_MODULES="$LV_MOD/ports/esp32/cmake" \
