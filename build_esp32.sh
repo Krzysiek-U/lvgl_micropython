@@ -8,7 +8,7 @@ MPY_CROSS_DIR="$MPY_DIR/mpy-cross"
 PORT_DIR="$MPY_DIR/ports/esp32"
 LV_MOD="$ROOT_DIR/lib/lvgl/lv_binding_micropython"
 
-# 2. NAPRAWA FLAG (To działa, nie ruszamy)
+# 2. NAPRAWA FLAG (Działa, nie ruszamy)
 echo "Naprawa flag architektury..."
 find "$MPY_DIR" -name "*.mk" -exec sed -i 's/-m64//g' {} +
 find "$MPY_DIR" -name "*.mk" -exec sed -i 's/--64//g' {} +
@@ -30,17 +30,16 @@ ota_0,    app,  ota_0,   0x20000, 0x800000,
 vfs,      data, fat,     0x820000, 0x7E0000,
 EOF
 
-# 5. KLUCZOWA NAPRAWA VENV (To rozwiązuje błąd Makefile:71)
+# 5. KLUCZOWA NAPRAWA VENV (Uderzenie prosto w błąd)
 echo "Wstrzykiwanie setuptools do venv ESP-IDF..."
-# Wykrywamy ścieżkę do Pythona w venv i instalujemy tam setuptools
-IDF_PYTHON=$(which python)
-$IDF_PYTHON -m pip install --upgrade setuptools wheel
+# Używamy pełnej ścieżki z logów, żeby na 100% zainstalować to w dobrym miejscu
+/tmp/esp/python/v5.0.2/venv/bin/python -m pip install --upgrade setuptools wheel
 
 # 6. KOMPILACJA ESP32-S3
 echo "Kompilacja MicroPython dla S3..."
 cd "$PORT_DIR"
 
-# Używamy ścieżki do folderu cmake, co jest standardem dla LVGL
+# Używamy ścieżki do folderu cmake bindingów LVGL
 make BOARD=ESP32_GENERIC_S3 \
      BOARD_VARIANT=SPIRAM_OCTAL \
      USER_C_MODULES="$LV_MOD/ports/esp32/cmake" \
