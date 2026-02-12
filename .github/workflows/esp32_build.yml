@@ -45,7 +45,7 @@ jobs:
           
           esptool.py --chip esp32s3 merge_bin \
             -o FIRMWARE_GOTOWY_NA_0x0.bin \
-            --flash_mode dio --flash_size 16m \
+            --flash_mode dio --flash_size 16MB \
             0x0000 "$BOOT" \
             0x8000 "$PART" \
             0x20000 "$APP"
