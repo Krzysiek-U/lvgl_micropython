@@ -1,30 +1,36 @@
-name: ESP32 build N16R8 FINAL MERGE
+name: ESP32 build N16R8 FINAL
 on: [push, pull_request, workflow_dispatch]
 
 jobs:
   build_esp32:
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           submodules: 'recursive'
 
-      - name: Setup ESP-IDF
-        uses: espressif/install-esp-idf-action@v1
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
-          version: v5.0.2
+          python-version: '3.10'
 
+      - name: Install ESP-IDF
+        run: |
+          brew install cmake ninja dfu-util
+          git submodule update --init --jobs 4 -- lib/esp-idf
+          cd lib/esp-idf
+          ./install.sh esp32s3
+          
       - name: Build and Manual Merge
         run: |
           pip install esptool Pillow
           
-          # 1. Znajdź foldery
-          ESP32_PORT_DIR=$(find . -path "*/ports/esp32" -type d | head -n 1)
-          MPY_CROSS_DIR=$(find . -name "mpy-cross" -type d | head -n 1)
+          # 1. Zaladuj srodowisko IDF
+          source lib/esp-idf/export.sh
           
-          # 2. BUDUJ MPY-CROSS (Naprawa --64)
-          make -C "$MPY_CROSS_DIR" CC=gcc
+          # 2. Znajdź foldery
+          ESP32_PORT_DIR=$(find . -path "*/ports/esp32" -type d | head -n 1)
           
           # 3. STWÓRZ TABELĘ PARTYDJI 16MB (8MB na program!)
           cat <<EOF > "$ESP32_PORT_DIR/partitions-16mb.csv"
@@ -34,17 +40,21 @@ jobs:
           ota_0,    app,  ota_0,   0x20000, 0x800000,
           vfs,      data, fat,     0x820000, 0x7E0000,
           EOF
-
-          # 4. WYMUŚ KONFIGURACJĘ
+          
+          # 4. KONFIGURACJA
           mkdir -p "$ESP32_PORT_DIR/boards"
           echo "CONFIG_PARTITION_TABLE_CUSTOM=y" >> "$ESP32_PORT_DIR/boards/sdkconfig"
           echo "CONFIG_PARTITION_TABLE_CUSTOM_FILENAME=\"partitions-16mb.csv\"" >> "$ESP32_PORT_DIR/boards/sdkconfig"
           echo "CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y" >> "$ESP32_PORT_DIR/boards/sdkconfig"
-
-          # 5. BUDOWANIE (Teraz wejdzie nawet najwiekszy soft)
-          python3 make.py esp32 BOARD=ESP32_GENERIC_S3 BOARD_VARIANT=SPIRAM_OCTAL DISPLAY=st77916 INDEV=gt911
           
-          # 6. RĘCZNE SKLEJANIE (Poprawiony adres 0x20000 i flaga 16m)
+          # 5. BUDOWANIE (Na macOS mpy-cross przejdzie bez błędu --64)
+          python3 make.py esp32 mpy_cross BOARD=ESP32_GENERIC_S3 BOARD_VARIANT=SPIRAM_OCTAL DISPLAY=st77916 INDEV=gt911
+          
+          # 6. SZUKANIE I SKLEJANIE
+          BOOT=$(find . -name "bootloader.bin" | head -n 1)
+          PART=$(find . -name "partition-table.bin" | head -n 1)
+          APP=$(find . -name "lvgl_micropy_esp32.bin" -o -name "micropython.bin" | head -n 1)
+          
           esptool.py --chip esp32s3 merge_bin \
             -o FIRMWARE_GOTOWY_NA_0x0.bin \
             --flash_mode dio --flash_size 16m \
@@ -52,9 +62,8 @@ jobs:
             0x8000 "$PART" \
             0x20000 "$APP"
 
-
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: micropython-esp32s3-n16r8-firmware
+          name: micropython-esp32s3-firmware
           path: FIRMWARE_GOTOWY_NA_0x0.bin
