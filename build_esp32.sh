@@ -34,12 +34,10 @@ EOF
 echo "Kompilacja MicroPython..."
 cd "$PORT_DIR"
 
-# CZYŚCIMY stare śmieci, które mogą powodować błąd Makefile:71
-make clean BOARD=ESP32_GENERIC_S3 BOARD_VARIANT=SPIRAM_OCTAL
-
-# WŁAŚCIWE BUDOWANIE
-# Podajemy USER_C_MODULES jako absolutną ścieżkę do folderu cmake
-make BOARD=ESP32_GENERIC_S3 BOARD_VARIANT=SPIRAM_OCTAL \
+# BUDOWANIE (Bez 'clean', podając USER_C_MODULES jako ścieżkę do folderu 'cmake')
+# Używamy IDF_PATH, który GitHub Actions ustawia automatycznie
+make BOARD=ESP32_GENERIC_S3 \
+     BOARD_VARIANT=SPIRAM_OCTAL \
      USER_C_MODULES="$LV_MOD/ports/esp32/cmake" \
      V=1
 
@@ -47,6 +45,7 @@ cd "$ROOT_DIR"
 
 # 6. SCALANIE
 echo "Sklejanie firmware..."
+# S3 tworzy folder build z konkretną nazwą wewnątrz ports/esp32
 BUILD_DIR=$(find "$PORT_DIR" -maxdepth 1 -name "build-ESP32_GENERIC_S3-SPIRAM_OCTAL" -type d | head -n 1)
 
 esptool.py --chip esp32s3 merge_bin \
