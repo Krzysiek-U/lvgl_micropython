@@ -1,14 +1,14 @@
 #!/bin/bash
 set -e
 
-# 1. Ścieżki - absolutne dla bezpieczeństwa
+# 1. Ścieżki - absolutne
 ROOT_DIR=$(pwd)
 MPY_DIR="$ROOT_DIR/lib/micropython"
 MPY_CROSS_DIR="$MPY_DIR/mpy-cross"
 PORT_DIR="$MPY_DIR/ports/esp32"
 LV_MOD="$ROOT_DIR/lib/lvgl/lv_binding_micropython"
 
-# 2. NAPRAWA FLAG (Nadal potrzebna dla mpy-cross)
+# 2. NAPRAWA FLAG (Działa, nie ruszamy)
 echo "Naprawa flag architektury..."
 find "$MPY_DIR" -name "*.mk" -exec sed -i 's/-m64//g' {} +
 find "$MPY_DIR" -name "*.mk" -exec sed -i 's/--64//g' {} +
@@ -30,22 +30,25 @@ ota_0,    app,  ota_0,   0x20000, 0x800000,
 vfs,      data, fat,     0x820000, 0x7E0000,
 EOF
 
-# 5. KOMPILACJA ESP32-S3 (Używamy metody idf.py dla pewności)
+# 5. KLUCZOWA NAPRAWA PYTHONA DLA ESP-IDF
+echo "Naprawa pakietów Pythona dla ESP-IDF..."
+# Instalujemy setuptools tam, gdzie szuka go ESP-IDF (rozwiązuje błąd pkg_resources)
+pip install --upgrade setuptools
+
+# 6. KOMPILACJA ESP32-S3
 echo "Kompilacja MicroPython..."
 cd "$PORT_DIR"
 
-# Wskazujemy moduły LVGL i naszą tabelę partycji bezpośrednio w wywołaniu make
-# USER_C_MODULES musi wskazywać na plik .cmake w ports/esp32/cmake
+# Używamy prostszej ścieżki do modułów (folderu wyżej), co jest bardziej odporne na błędy cmake
 make BOARD=ESP32_GENERIC_S3 \
      BOARD_VARIANT=SPIRAM_OCTAL \
-     USER_C_MODULES="$LV_MOD/ports/esp32/cmake/micropython.cmake" \
+     USER_C_MODULES="$LV_MOD/ports/esp32/cmake" \
      V=1
 
 cd "$ROOT_DIR"
 
-# 6. SCALANIE
+# 7. SCALANIE
 echo "Sklejanie firmware..."
-# S3 tworzy folder build z konkretną nazwą
 BUILD_DIR=$(find "$PORT_DIR" -maxdepth 1 -name "build-ESP32_GENERIC_S3-SPIRAM_OCTAL" -type d | head -n 1)
 
 esptool.py --chip esp32s3 merge_bin \
