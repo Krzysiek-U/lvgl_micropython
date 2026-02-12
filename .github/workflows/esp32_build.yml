@@ -22,7 +22,7 @@ jobs:
         with:
           version: v5.0.2
 
-            - name: Build and Manual Merge
+      - name: Build and Manual Merge
         run: |
           pip install esptool Pillow wheel
           
