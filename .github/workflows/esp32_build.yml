@@ -44,14 +44,10 @@ jobs:
           # 5. BUDOWANIE (Teraz wejdzie nawet najwiekszy soft)
           python3 make.py esp32 BOARD=ESP32_GENERIC_S3 BOARD_VARIANT=SPIRAM_OCTAL DISPLAY=st77916 INDEV=gt911
           
-          # 6. SZUKANIE I SKLEJANIE (Poprawione adresy dla ota_0=8MB)
-          BOOT=$(find . -name "bootloader.bin" | head -n 1)
-          PART=$(find . -name "partition-table.bin" | head -n 1)
-          APP=$(find . -name "lvgl_micropy_esp32.bin" -o -name "micropython.bin" | head -n 1)
-          
+          # 6. RĘCZNE SKLEJANIE (Poprawiony adres 0x20000 i flaga 16m)
           esptool.py --chip esp32s3 merge_bin \
             -o FIRMWARE_GOTOWY_NA_0x0.bin \
-            --flash_mode dio --flash_size 16MB \
+            --flash_mode dio --flash_size 16m \
             0x0000 "$BOOT" \
             0x8000 "$PART" \
             0x20000 "$APP"
