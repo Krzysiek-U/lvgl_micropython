@@ -30,7 +30,7 @@ ota_0,    app,  ota_0,   0x20000, 0x800000,
 vfs,      data, fat,     0x820000, 0x7E0000,
 EOF
 
-# 5. KLUCZOWA NAPRAWA VENV (Uderzenie prosto w błąd)
+# 5. KLUCZOWA NAPRAWA ŚRODOWISKA PYTHON (Uderzenie w punkt)
 echo "Naprawa pkg_resources w venv ESP-IDF..."
 /tmp/esp/python/v5.0.2/venv/bin/python -m pip install --upgrade setuptools wheel
 
@@ -38,7 +38,7 @@ echo "Naprawa pkg_resources w venv ESP-IDF..."
 echo "Kompilacja MicroPython dla S3..."
 cd "$PORT_DIR"
 
-# Używamy ścieżki do folderu cmake bindingów LVGL
+# Używamy ścieżki do folderu cmake, co jest standardem dla LVGL
 make BOARD=ESP32_GENERIC_S3 \
      BOARD_VARIANT=SPIRAM_OCTAL \
      USER_C_MODULES="$LV_MOD/ports/esp32/cmake" \
