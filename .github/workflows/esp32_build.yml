@@ -24,28 +24,30 @@ jobs:
 
       - name: Build and Manual Merge
         run: |
-          # 1. Znajdź folder portu
+          pip install esptool Pillow wheel
+          
+          # 1. Znajdź foldery
           ESP32_PORT_DIR=$(find . -path "*/ports/esp32" -type d | head -n 1)
+          MPY_CROSS_DIR=$(find . -name "mpy-cross" -type d | head -n 1)
           
-          # 2. STWÓRZ TABELĘ (8MB na program - bezpieczeństwo dla LVGL)
-          cat <<EOF > "$ESP32_PORT_DIR/partitions-16mb.csv"
-          nvs,      data, nvs,     0x9000,  0x6000,
-          otadata,  data, ota,     0xf000,  0x2000,
-          phy_init, data, phy,     0x11000, 0x1000,
-          ota_0,    app,  ota_0,   0x20000, 0x800000,
-          vfs,      data, fat,     0x820000, 0x7E0000,
-          EOF
+          # 2. RĘCZNA KOMPILACJA MPY-CROSS (Zanim skrypt autora go dotknie)
+          # CROSS_COMPILE="" wymusza użycie natywnego kompilatora bez błędnych flag --64
+          make -C "$MPY_CROSS_DIR" CC=gcc CROSS_COMPILE=""
           
-          # 3. KONFIGURACJA SDKCONFIG
+          # 3. STWÓRZ TABELĘ (8MB na program)
+          printf "nvs,data,nvs,0x9000,0x6000\notadata,data,ota,0xf000,0x2000\nphy_init,data,phy,0x11000,0x1000\nota_0,app,ota_0,0x20000,0x800000\nvfs,data,fat,0x820000,0x7E0000\n" > "$ESP32_PORT_DIR/partitions-16mb.csv"
+          
+          # 4. KONFIGURACJA SDKCONFIG
           mkdir -p "$ESP32_PORT_DIR/boards"
           echo "CONFIG_PARTITION_TABLE_CUSTOM=y" >> "$ESP32_PORT_DIR/boards/sdkconfig"
           echo "CONFIG_PARTITION_TABLE_CUSTOM_FILENAME=\"partitions-16mb.csv\"" >> "$ESP32_PORT_DIR/boards/sdkconfig"
           echo "CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y" >> "$ESP32_PORT_DIR/boards/sdkconfig"
           
-          # 4. BUDOWANIE (Twoje poprawione CC=gcc w esp32.py teraz zadziała!)
-          python3 make.py esp32 mpy_cross BOARD=ESP32_GENERIC_S3 BOARD_VARIANT=SPIRAM_OCTAL
+          # 5. BUDOWANIE (Skrypt autora zobaczy gotowy mpy-cross i przejdzie dalej)
+          # Usunąłem "mpy_cross" z argumentów, żeby skrypt go nie przebudowywał
+          python3 make.py esp32 BOARD=ESP32_GENERIC_S3 BOARD_VARIANT=SPIRAM_OCTAL
           
-          # 5. SZUKANIE PLIKÓW
+          # 6. SZUKANIE I SKLEJANIE FINALNEGO PLIKU
           BOOT=$(find . -name "bootloader.bin" | grep "S3" | head -n 1)
           [ -z "$BOOT" ] && BOOT=$(find . -name "bootloader.bin" | head -n 1)
           PART=$(find . -name "partition-table.bin" | grep "S3" | head -n 1)
@@ -53,13 +55,13 @@ jobs:
           APP=$(find . -name "micropython.bin" | grep "S3" | head -n 1)
           [ -z "$APP" ] && APP=$(find . -name "micropython.bin" -o -name "lvgl_micropy_esp32.bin" | head -n 1)
           
-          # 6. SCALANIE (Adres 0x20000 bo powiększyliśmy ota_0 do 8MB)
           esptool.py --chip esp32s3 merge_bin \
             -o FIRMWARE_GOTOWY_NA_0x0.bin \
             --flash_mode dio --flash_size 16MB \
             0x0000 "$BOOT" \
             0x8000 "$PART" \
             0x20000 "$APP"
+
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
