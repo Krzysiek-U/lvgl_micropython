@@ -1,0 +1,41 @@
+name: My Custom ESP32 Build
+on: [push, pull_request, workflow_dispatch]
+
+jobs:
+  build_esp32:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install System Dependencies
+        run: |
+          sudo apt-get update
+          # To zapewnia wsparcie dla budowania mpy-cross bez błędów architektury
+          sudo apt-get install -y gcc-multilib g++-multilib lib32z1-dev
+          pip install esptool Pillow wheel
+
+      - name: Setup ESP-IDF
+        uses: espressif/install-esp-idf-action@v1
+        with:
+          version: v5.0.2
+
+      - name: Run My Custom Build Script
+        run: |
+          # Nadajemy uprawnienia do wykonywania Twojego skryptu
+          chmod +x build_esp32.sh
+          # Uruchamiamy Twój własny proces budowania
+          ./build_esp32.sh
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware-esp32s3-custom
+          path: FIRMWARE_GOTOWY_NA_0x0.bin
