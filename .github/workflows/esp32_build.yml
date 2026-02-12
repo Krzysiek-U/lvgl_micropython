@@ -3,7 +3,6 @@ on: [push, pull_request, workflow_dispatch]
 
 jobs:
   build_esp32:
-    # Zmieniamy na macos, bo tylko tu mpy-cross przechodzi bez bledu --64
     runs-on: macos-latest
     steps:
       - name: Checkout
@@ -23,7 +22,7 @@ jobs:
 
       - name: Build and Manual Merge
         run: |
-          # 1. Instalacja i ladowanie IDF (wszystko w jednym bloku!)
+          # 1. Instalacja i ladowanie IDF
           git submodule update --init --jobs 4 -- lib/esp-idf
           cd lib/esp-idf
           ./install.sh esp32s3
@@ -33,14 +32,8 @@ jobs:
           # 2. Znajdz folder portu
           ESP32_PORT_DIR=$(find . -path "*/ports/esp32" -type d | head -n 1)
           
-          # 3. STWORZ TABELE PARTYDJI 16MB
-          cat <<EOF > "$ESP32_PORT_DIR/partitions-16mb.csv"
-          nvs,      data, nvs,     0x9000,  0x6000,
-          otadata,  data, ota,     0xf000,  0x2000,
-          phy_init, data, phy,     0x11000, 0x1000,
-          ota_0,    app,  ota_0,   0x20000, 0x800000,
-          vfs,      data, fat,     0x820000, 0x7E0000,
-          EOF
+          # 3. STWORZ TABELE PARTYDJI 16MB (Zapis odporny na macOS)
+          printf "nvs,data,nvs,0x9000,0x6000\notadata,data,ota,0xf000,0x2000\nphy_init,data,phy,0x11000,0x1000\nota_0,app,ota_0,0x20000,0x800000\nvfs,data,fat,0x820000,0x7E0000\n" > "$ESP32_PORT_DIR/partitions-16mb.csv"
           
           # 4. KONFIGURACJA SDKCONFIG
           mkdir -p "$ESP32_PORT_DIR/boards"
@@ -48,14 +41,16 @@ jobs:
           echo "CONFIG_PARTITION_TABLE_CUSTOM_FILENAME=\"partitions-16mb.csv\"" >> "$ESP32_PORT_DIR/boards/sdkconfig"
           echo "CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y" >> "$ESP32_PORT_DIR/boards/sdkconfig"
           
-          # 5. BUDOWANIE (Na Macu mpy-cross przejdzie gładko)
-          python3 make.py esp32 mpy_cross BOARD=ESP32_GENERIC_S3 BOARD_VARIANT=SPIRAM_OCTAL DISPLAY=st77916 INDEV=gt911
+          # 5. BUDOWANIE (Bez problematycznego INDEV, sam wyswietlacz st77916)
+          python3 make.py esp32 mpy_cross BOARD=ESP32_GENERIC_S3 BOARD_VARIANT=SPIRAM_OCTAL DISPLAY=st77916
           
           # 6. SZUKANIE I SKLEJANIE FINALNEGO PLIKU
           BOOT=$(find . -name "bootloader.bin" | head -n 1)
           PART=$(find . -name "partition-table.bin" | head -n 1)
           APP=$(find . -name "lvgl_micropy_esp32.bin" -o -name "micropython.bin" | head -n 1)
           
+          echo "ZNALEZIONO SKLADNIKI: BOOT=$BOOT, PART=$PART, APP=$APP"
+
           esptool.py --chip esp32s3 merge_bin \
             -o FIRMWARE_GOTOWY_NA_0x0.bin \
             --flash_mode dio --flash_size 16m \
