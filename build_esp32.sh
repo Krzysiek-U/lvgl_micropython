@@ -4,14 +4,18 @@ set -e
 # 1. Ścieżki
 MPY_DIR="lib/micropython"
 MPY_CROSS_DIR="$MPY_DIR/mpy-cross"
-# Używamy pełnej, sztywnej ścieżki
-PORT_DIR="lib/micropython/ports/esp32"
+PORT_DIR="$MPY_DIR/ports/esp32"
 
-# 2. BUDOWANIE MPY-CROSS (To już nam działa!)
+# 2. BRUTALNA NAPRAWA (Wycinamy powód błędu u źródła)
+echo "Usuwanie błędnych flag architektury..."
+find "$MPY_DIR" -name "*.mk" -exec sed -i 's/-m64//g' {} +
+find "$MPY_DIR" -name "*.mk" -exec sed -i 's/--64//g' {} +
+
+# 3. BUDOWANIE MPY-CROSS (Teraz mpy-cross przejdzie na 100%)
 echo "Budowanie mpy-cross..."
 make -C "$MPY_CROSS_DIR" CC=gcc CROSS_COMPILE=""
 
-# 3. TWORZENIE TABELI PARTYDJI 16MB
+# 4. TWORZENIE TABELI PARTYDJI 16MB
 echo "Tworzenie tabeli partycji..."
 cat <<EOF > "$PORT_DIR/partitions-16mb.csv"
 nvs,      data, nvs,     0x9000,  0x6000,
@@ -21,22 +25,21 @@ ota_0,    app,  ota_0,   0x20000, 0x800000,
 vfs,      data, fat,     0x820000, 0x7E0000,
 EOF
 
-# 4. KOMPILACJA (Wchodzimy fizycznie do folderu)
-echo "Kompilacja MicroPython dla ESP32-S3..."
+# 5. KOMPILACJA ESP32-S3
+echo "Kompilacja MicroPython..."
 cd "$PORT_DIR"
-make BOARD=ESP32_GENERIC_S3 BOARD_VARIANT=SPIRAM_OCTAL USER_C_MODULES=../../../../lib/lvgl/lv_binding_micropython/ports/esp32/partitions-16mb.csv
+make BOARD=ESP32_GENERIC_S3 BOARD_VARIANT=SPIRAM_OCTAL
 cd ../../../..
 
-# 5. SZUKANIE WYNIKÓW I SCALANIE
-echo "Szukanie plików .bin..."
-# Szukamy folderu build wewnątrz ports/esp32
-BUILD_PATH=$(find "$PORT_DIR" -name "build-ESP32_GENERIC_S3-SPIRAM_OCTAL" -type d | head -n 1)
+# 6. SCALANIE
+echo "Szukanie plików i scalanie..."
+BUILD_DIR=$(find "$PORT_DIR" -name "build-ESP32_GENERIC_S3-SPIRAM_OCTAL" -type d | head -n 1)
 
 esptool.py --chip esp32s3 merge_bin \
     -o FIRMWARE_GOTOWY_NA_0x0.bin \
     --flash_mode dio --flash_size 16MB \
-    0x0000 "$BUILD_PATH/bootloader/bootloader.bin" \
-    0x8000 "$BUILD_PATH/partition_table/partition-table.bin" \
-    0x10000 "$BUILD_PATH/micropython.bin"
+    0x0000 "$BUILD_DIR/bootloader/bootloader.bin" \
+    0x8000 "$BUILD_DIR/partition_table/partition-table.bin" \
+    0x10000 "$BUILD_DIR/micropython.bin"
 
-echo "SUKCES! Plik FIRMWARE_GOTOWY_NA_0x0.bin gotowy."
+echo "SUKCES!"
