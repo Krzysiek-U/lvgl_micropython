@@ -19,15 +19,14 @@ jobs:
         run: |
           pip install esptool Pillow
           
-          # 1. Znajdź foldery (Bardzo ważne w Twojej strukturze)
+          # 1. Znajdź foldery
           ESP32_PORT_DIR=$(find . -path "*/ports/esp32" -type d | head -n 1)
           MPY_CROSS_DIR=$(find . -name "mpy-cross" -type d | head -n 1)
           
-          # 2. ZBUDUJ MPY-CROSS RĘCZNIE (Zanim skrypt autora go zepsuje)
-          # Używamy CC=gcc, co naprawia błąd: as: unrecognized option '--64'
+          # 2. BUDUJ MPY-CROSS (Naprawa --64)
           make -C "$MPY_CROSS_DIR" CC=gcc
           
-          # 3. STWÓRZ TABELĘ PARTYDJI 16MB
+          # 3. STWÓRZ TABELĘ PARTYDJI 16MB (8MB na program!)
           cat <<EOF > "$ESP32_PORT_DIR/partitions-16mb.csv"
           nvs,      data, nvs,     0x9000,  0x6000,
           otadata,  data, ota,     0xf000,  0x2000,
@@ -36,16 +35,16 @@ jobs:
           vfs,      data, fat,     0x820000, 0x7E0000,
           EOF
 
-          # 4. WYMUŚ KONFIGURACJĘ W SDKCONFIG
+          # 4. WYMUŚ KONFIGURACJĘ
           mkdir -p "$ESP32_PORT_DIR/boards"
           echo "CONFIG_PARTITION_TABLE_CUSTOM=y" >> "$ESP32_PORT_DIR/boards/sdkconfig"
           echo "CONFIG_PARTITION_TABLE_CUSTOM_FILENAME=\"partitions-16mb.csv\"" >> "$ESP32_PORT_DIR/boards/sdkconfig"
           echo "CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y" >> "$ESP32_PORT_DIR/boards/sdkconfig"
 
-          # 5. BUDOWANIE (Skrypt autora zobaczy gotowy mpy-cross i pójdzie dalej)
+          # 5. BUDOWANIE (Teraz wejdzie nawet najwiekszy soft)
           python3 make.py esp32 BOARD=ESP32_GENERIC_S3 BOARD_VARIANT=SPIRAM_OCTAL DISPLAY=st77916 INDEV=gt911
           
-          # 6. SKLEJANIE FINALNEGO PLIKU 0x0
+          # 6. SZUKANIE I SKLEJANIE (Poprawione adresy dla ota_0=8MB)
           BOOT=$(find . -name "bootloader.bin" | head -n 1)
           PART=$(find . -name "partition-table.bin" | head -n 1)
           APP=$(find . -name "lvgl_micropy_esp32.bin" -o -name "micropython.bin" | head -n 1)
@@ -56,8 +55,6 @@ jobs:
             0x0000 "$BOOT" \
             0x8000 "$PART" \
             0x20000 "$APP"
-
-
 
 
       - name: Upload Artifact
