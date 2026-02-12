@@ -551,7 +551,8 @@ def parse_args(extra_args, lv_cflags, brd):
     return extra_args, lv_cflags, board
 
 
-mpy_cross_cmd = ['make', '-C', 'lib/micropython/mpy-cross']
+# mpy_cross_cmd = ['make', '-C', 'lib/micropython/mpy-cross']  # <-- Stara linia (zakomentowana)
+mpy_cross_cmd = ['make', '-C', 'lib/micropython/mpy-cross', 'CC=gcc'] # <-- Nowa linia
 esp_cmd = [
     'make',
     '',
