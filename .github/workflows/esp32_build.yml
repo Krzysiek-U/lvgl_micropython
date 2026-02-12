@@ -29,7 +29,9 @@ jobs:
 
       - name: Build and Manual Merge
         run: |
-          # 1. Znajdź folder portu
+          pip install esptool Pillow wheel
+          
+          # 1. Znajdź foldery
           ESP32_PORT_DIR=$(find . -path "*/ports/esp32" -type d | head -n 1)
           
           # 2. STWÓRZ TABELĘ (8MB na program)
@@ -47,10 +49,11 @@ jobs:
           echo "CONFIG_PARTITION_TABLE_CUSTOM_FILENAME=\"partitions-16mb.csv\"" >> "$ESP32_PORT_DIR/boards/sdkconfig"
           echo "CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y" >> "$ESP32_PORT_DIR/boards/sdkconfig"
           
-          # 4. BUDOWANIE (Teraz mpy-cross przejdzie dzięki gcc-multilib)
-          python3 make.py esp32 mpy_cross BOARD=ESP32_GENERIC_S3 BOARD_VARIANT=SPIRAM_OCTAL
+          # 4. BUDOWANIE (Wymuszamy CC=gcc, aby uniknac bledu --64)
+          # Przekazujemy CC=gcc do make przez skrypt make.py
+          python3 make.py esp32 mpy_cross BOARD=ESP32_GENERIC_S3 BOARD_VARIANT=SPIRAM_OCTAL LV_CFLAGS="-DCC=gcc"
           
-          # 5. SZUKANIE PLIKÓW
+          # 5. SZUKANIE I SKLEJANIE
           BOOT=$(find . -name "bootloader.bin" | grep "S3" | head -n 1)
           [ -z "$BOOT" ] && BOOT=$(find . -name "bootloader.bin" | head -n 1)
           
@@ -60,7 +63,7 @@ jobs:
           APP=$(find . -name "micropython.bin" | grep "S3" | head -n 1)
           [ -z "$APP" ] && APP=$(find . -name "micropython.bin" -o -name "lvgl_micropy_esp32.bin" | head -n 1)
           
-          # 6. SCALANIE (Używamy 16MB)
+          # 6. SCALANIE (16MB wielkimi literami)
           esptool.py --chip esp32s3 merge_bin \
             -o FIRMWARE_GOTOWY_NA_0x0.bin \
             --flash_mode dio --flash_size 16MB \
