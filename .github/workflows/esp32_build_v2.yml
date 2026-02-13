@@ -32,7 +32,7 @@ jobs:
             ~/esp-idf
           key: espidf-v5-cache
 
-      - name: Install ESP-IDF manually
+      - name: Clone ESP-IDF v5.0
         run: |
           if [ ! -d "$HOME/esp-idf" ]; then
             git clone -b v5.0 --depth=1 https://github.com/espressif/esp-idf.git $HOME/esp-idf
@@ -41,6 +41,7 @@ jobs:
       - name: Patch ESP-IDF to disable broken auto-venv
         run: |
           sed -i 's/create_virtualenv(env_dir)/return env_dir/' $HOME/esp-idf/tools/idf_tools.py
+          sed -i 's/ensure_python_env/python_env_path/' $HOME/esp-idf/tools/idf_py_actions/tools.py
 
       - name: Install ESP-IDF tools
         run: |
