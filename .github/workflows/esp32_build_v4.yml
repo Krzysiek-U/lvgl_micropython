@@ -59,3 +59,11 @@ jobs:
             ~/.espressif
             ~/esp-idf
           key: espidf-v51-cache
+          
+      - name: Save ESP-IDF cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.espressif
+            ~/esp-idf
+          key: espidf-v51-cache
