@@ -38,6 +38,7 @@ jobs:
           make submodules
           make BOARD=ESP32S3_GENERIC
 
+
       - name: Upload firmware.bin
         uses: actions/upload-artifact@v4
         with:
