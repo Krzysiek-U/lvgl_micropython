@@ -22,7 +22,6 @@ jobs:
           cd micropython
           git submodule update --init --recursive
 
-
       - name: Clone ESP-IDF v5.1.2
         run: |
           git clone -b v5.1.2 --depth=1 https://github.com/espressif/esp-idf.git $HOME/esp-idf
@@ -37,12 +36,12 @@ jobs:
 
       - name: Build MicroPython for ESP32-S3
         run: |
-          cd micropython/ports/esp32s3
+          cd micropython/ports/esp32
           make submodules
-          make
+          make BOARD=ESP32S3_GENERIC
 
       - name: Upload firmware.bin
         uses: actions/upload-artifact@v4
         with:
           name: esp32s3-firmware
-          path: micropython/ports/esp32s3/build/firmware.bin
+          path: micropython/ports/esp32/build-ESP32S3_GENERIC/firmware.bin
