@@ -22,13 +22,18 @@ jobs:
           sudo apt-get install -y gcc-multilib g++-multilib lib32z1-dev
           pip install esptool Pillow wheel
 
-      # Najstabilniejsza metoda — ręczna instalacja ESP-IDF
+      # Ręczna instalacja ESP-IDF (najstabilniejsza)
       - name: Install ESP-IDF manually
         run: |
           git clone -b v5.0.2 --recursive https://github.com/espressif/esp-idf.git ~/esp-idf
           cd ~/esp-idf
           ./install.sh esp32s3
-          . ./export.sh
+
+      # 🔧 Naprawa venv ESP-IDF (rozwiązuje pkg_resources error)
+      - name: Fix ESP-IDF Python environment
+        run: |
+          . ~/esp-idf/export.sh
+          python -m pip install --upgrade pip setuptools wheel
 
       - name: Run My Custom Build Script
         run: |
