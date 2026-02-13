@@ -1,59 +1,64 @@
-name: My Custom ESP32 Build v.2
-on: [push, pull_request, workflow_dispatch]
+name: ESP32 Build v2
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
 
 jobs:
-  build_esp32:
+  build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          submodules: recursive
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.10'
-
-      - name: Install System Dependencies
+      - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y gcc-multilib g++-multilib lib32z1-dev
-          pip install esptool Pillow wheel
+          sudo apt-get install -y git wget flex bison gperf python3 python3-pip python3-venv cmake ninja-build ccache libffi-dev libssl-dev dfu-util
 
       - name: Restore ESP-IDF cache
         uses: actions/cache@v4
         with:
-          path: ~/.espressif
-          key: esp-idf-${{ runner.os }}-v5.0.2
+          path: |
+            ~/.espressif
+            ~/esp-idf
+          key: espidf-v5-cache
 
       - name: Install ESP-IDF manually
         run: |
-          git clone -b v5.0.2 --recursive https://github.com/espressif/esp-idf.git ~/esp-idf
-          cd ~/esp-idf
-          ./install.sh esp32s3
+          if [ ! -d "$HOME/esp-idf" ]; then
+            git clone -b v5.0 --depth=1 https://github.com/espressif/esp-idf.git $HOME/esp-idf
+          fi
+          cd $HOME/esp-idf
+          ./install.sh esp32
 
-      # 🔧 NAPRAWA venv — BEZ export.sh
       - name: Fix ESP-IDF Python environment
         run: |
-          ~/esp-idf/tools/idf_tools.py install-python-env
-          ~/.espressif/python_env/idf5.0_py3.10_env/bin/python -m pip install --upgrade pip setuptools wheel
+          PY_ENV="$HOME/.espressif/python_env/idf5.0_py3.10_env"
+          if [ -d "$PY_ENV" ]; then
+            echo "Fixing ESP-IDF Python environment..."
+            "$PY_ENV/bin/python" -m ensurepip --upgrade
+            "$PY_ENV/bin/python" -m pip install --upgrade pip setuptools wheel
+          else
+            echo "ESP-IDF Python environment not found yet."
+          fi
+
+      - name: Export ESP-IDF
+        run: . $HOME/esp-idf/export.sh
+
+      - name: Build MicroPython for ESP32
+        run: |
+          cd ports/esp32
+          make submodules
+          make
 
       - name: Save ESP-IDF cache
         uses: actions/cache@v4
         with:
-          path: ~/.espressif
-          key: esp-idf-${{ runner.os }}-v5.0.2
-
-      - name: Run My Custom Build Script
-        run: |
-          . ~/esp-idf/export.sh
-          chmod +x build_esp32.sh
-          ./build_esp32.sh
-
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: firmware-esp32s3
-          path: FIRMWARE_GOTOWY_NA_0x0.bin
+          path: |
+            ~/.espressif
+            ~/esp-idf
+          key: espidf-v5-cache
