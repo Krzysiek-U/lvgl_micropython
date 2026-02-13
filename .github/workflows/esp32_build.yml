@@ -22,18 +22,18 @@ jobs:
           sudo apt-get install -y gcc-multilib g++-multilib lib32z1-dev
           pip install esptool Pillow wheel
 
-      - name: Setup ESP-IDF
-        uses: espressif/install-esp-idf-action@v1
-        with:
-          version: v5.0.2
+      # Najstabilniejsza metoda — ręczna instalacja ESP-IDF
+      - name: Install ESP-IDF manually
+        run: |
+          git clone -b v5.0.2 --recursive https://github.com/espressif/esp-idf.git ~/esp-idf
+          cd ~/esp-idf
+          ./install.sh esp32s3
+          . ./export.sh
 
       - name: Run My Custom Build Script
         run: |
+          . ~/esp-idf/export.sh
           chmod +x build_esp32.sh
-
-          # 🔥 KLUCZOWE: załaduj środowisko ESP-IDF zanim odpalisz skrypt
-          source $IDF_PATH/export.sh
-
           ./build_esp32.sh
 
       - name: Upload Artifact
