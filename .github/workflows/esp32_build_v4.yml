@@ -1,4 +1,4 @@
-name: ESP32-S3 MicroPython + LVGL 8.3
+name: ESP32-S3 MicroPython + LVGL (SPIRAM + USB)
 
 on:
   workflow_dispatch:
@@ -24,7 +24,7 @@ jobs:
           cd micropython
           git submodule update --init --recursive
 
-      - name: Clone ESP-IDF (correct version for master)
+      - name: Clone ESP-IDF (v5.2 for MicroPython master)
         run: |
           git clone -b v5.2 --depth=1 https://github.com/espressif/esp-idf.git
           cd esp-idf
@@ -44,26 +44,26 @@ jobs:
           cp -r lv_bindings micropython/lib/
           cp lv_conf.h micropython/ports/esp32/
 
-      - name: Patch ESP32-S3 board to include LVGL
+      - name: Patch ESP32-S3 SPIRAM USB board to include LVGL
         run: |
-          BOARD_CMAKE="micropython/ports/esp32/boards/ESP32_GENERIC_S3/mpconfigboard.cmake"
+          BOARD_CMAKE="micropython/ports/esp32/boards/ESP32_GENERIC_S3_SPIRAM_USB/mpconfigboard.cmake"
           {
             echo 'set(LVGL_DIR "${MICROPY_DIR}/lib/lvgl")'
             echo 'set(LV_BINDINGS_DIR "${MICROPY_DIR}/lib/lv_bindings")'
             echo 'include(${LV_BINDINGS_DIR}/lvgl.cmake)'
           } >> "${BOARD_CMAKE}"
 
-      - name: Build MicroPython + LVGL for ESP32-S3
+      - name: Build MicroPython + LVGL for ESP32-S3 SPIRAM USB
         run: |
           . esp-idf/export.sh
           cd micropython/ports/esp32
           make submodules
-          make BOARD=ESP32_GENERIC_S3
+          make BOARD=ESP32_GENERIC_S3_SPIRAM_USB
 
       - name: Upload firmware artifact
         uses: actions/upload-artifact@v4
         with:
-          name: firmware-esp32s3-lvgl
+          name: firmware-esp32s3-spiram-usb-lvgl
           path: |
-            micropython/ports/esp32/build-ESP32_GENERIC_S3/firmware.bin
-            micropython/ports/esp32/build-ESP32_GENERIC_S3/firmware.elf
+            micropython/ports/esp32/build-ESP32_GENERIC_S3_SPIRAM_USB/firmware.bin
+            micropython/ports/esp32/build-ESP32_GENERIC_S3_SPIRAM_USB/firmware.elf
