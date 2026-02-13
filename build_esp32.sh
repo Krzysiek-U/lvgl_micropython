@@ -13,14 +13,13 @@ echo "Naprawa flag architektury..."
 find "$MPY_DIR" -name "*.mk" -exec sed -i 's/-m64//g' {} +
 find "$MPY_DIR" -name "*.mk" -exec sed -i 's/--64//g' {} +
 
-# 3. PRZYGOTOWANIE MPY-CROSS
+# 3. PRZYGOTOWANIE MPY-CROSS (prawdziwy build, nie curl na github.com)
 echo "Przygotowanie mpy-cross..."
-mkdir -p "$MPY_CROSS_DIR/build"
-curl -L https://github.com -o "$MPY_CROSS_DIR/mpy-cross"
-chmod +x "$MPY_CROSS_DIR/mpy-cross"
-cp "$MPY_CROSS_DIR/mpy-cross" "$MPY_CROSS_DIR/build/mpy-cross"
+cd "$MPY_CROSS_DIR"
+make -j"$(nproc)"
+cd "$ROOT_DIR"
 
-# 4. TWORZENIE PARTYDJI 16MB
+# 4. TWORZENIE PARTYCJI 16MB
 echo "Tworzenie partycji 16MB..."
 cat <<EOF > "$PORT_DIR/partitions-16mb.csv"
 nvs,      data, nvs,     0x9000,  0x6000,
@@ -30,16 +29,22 @@ ota_0,    app,  ota_0,   0x20000, 0x800000,
 vfs,      data, fat,     0x820000, 0x7E0000,
 EOF
 
-# 5. KLUCZOWA NAPRAWA VENV (Uderzenie prosto w błąd)
-echo "Wstrzykiwanie setuptools do venv ESP-IDF..."
-# Używamy pełnej ścieżki z logów, żeby na 100% zainstalować to w dobrym miejscu
-/tmp/esp/python/v5.0.2/venv/bin/python -m pip install --upgrade setuptools wheel
+# 5. NAPRAWA VENV ESP-IDF (pip + setuptools + wheel)
+echo "Naprawa venv ESP-IDF (pip + setuptools + wheel)..."
+
+if [ -d "/tmp/esp/idf/v5.0.2/esp-idf" ]; then
+    # użyj dokładnie tego środowiska, którego używa idf.py
+    . /tmp/esp/idf/v5.0.2/esp-idf/export.sh
+    python -m pip install --upgrade pip setuptools wheel
+else
+    # fallback na ścieżkę z logów
+    /tmp/esp/python/v5.0.2/venv/bin/python -m pip install --upgrade pip setuptools wheel
+fi
 
 # 6. KOMPILACJA ESP32-S3
 echo "Kompilacja MicroPython dla S3..."
 cd "$PORT_DIR"
 
-# Używamy ścieżki do folderu cmake bindingów LVGL
 make BOARD=ESP32_GENERIC_S3 \
      BOARD_VARIANT=SPIRAM_OCTAL \
      USER_C_MODULES="$LV_MOD/ports/esp32/cmake" \
