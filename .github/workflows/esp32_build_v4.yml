@@ -40,17 +40,13 @@ jobs:
 
       - name: Prepare LVGL in MicroPython tree
         run: |
-          # skopiuj LVGL i bindingi do drzewa MicroPythona
           cp -r lvgl micropython/lib/
           cp -r lv_bindings micropython/lib/
-
-          # jeśli masz własny lv_conf.h w repo – skopiuj go tutaj
-          # zakładam, że trzymasz go w ./lv_conf.h w swoim repo
           cp lv_conf.h micropython/ports/esp32/
 
-      - name: Patch ESP32S3 board to include LVGL
+      - name: Patch ESP32-S3 board to include LVGL
         run: |
-          BOARD_CMAKE="micropython/ports/esp32/boards/ESP32S3_GENERIC/mpconfigboard.cmake"
+          BOARD_CMAKE="micropython/ports/esp32/boards/ESP32_GENERIC_S3/mpconfigboard.cmake"
           {
             echo 'set(LVGL_DIR "${MICROPY_DIR}/lib/lvgl")'
             echo 'set(LV_BINDINGS_DIR "${MICROPY_DIR}/lib/lv_bindings")'
@@ -62,12 +58,12 @@ jobs:
           . esp-idf/export.sh
           cd micropython/ports/esp32
           make submodules
-          make BOARD=ESP32S3_GENERIC
+          make BOARD=ESP32_GENERIC_S3
 
       - name: Upload firmware artifact
         uses: actions/upload-artifact@v4
         with:
           name: firmware-esp32s3-lvgl
           path: |
-            micropython/ports/esp32/build-ESP32S3_GENERIC/firmware.bin
-            micropython/ports/esp32/build-ESP32S3_GENERIC/firmware.elf
+            micropython/ports/esp32/build-ESP32_GENERIC_S3/firmware.bin
+            micropython/ports/esp32/build-ESP32_GENERIC_S3/firmware.elf
