@@ -38,10 +38,10 @@ jobs:
             git clone -b v5.0 --depth=1 https://github.com/espressif/esp-idf.git $HOME/esp-idf
           fi
 
-      - name: Patch ESP-IDF to disable broken auto-venv
+      - name: Patch ESP-IDF to disable ALL auto-venv creation
         run: |
           sed -i 's/create_virtualenv(env_dir)/return env_dir/' $HOME/esp-idf/tools/idf_tools.py
-          sed -i 's/ensure_python_env/python_env_path/' $HOME/esp-idf/tools/idf_py_actions/tools.py
+          sed -i 's/ensure_python_env(env_path)/return env_path/' $HOME/esp-idf/tools/idf_py_actions/environment.py
 
       - name: Install ESP-IDF tools
         run: |
