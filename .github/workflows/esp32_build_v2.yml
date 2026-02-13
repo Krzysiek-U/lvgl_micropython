@@ -1,4 +1,4 @@
-name: My Custom ESP32 Build
+name: My Custom ESP32 Build v.2
 on: [push, pull_request, workflow_dispatch]
 
 jobs:
