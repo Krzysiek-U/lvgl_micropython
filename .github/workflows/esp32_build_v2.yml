@@ -30,35 +30,21 @@ jobs:
           path: |
             ~/.espressif
             ~/esp-idf
-          key: espidf-v5-cache
+          key: espidf-v51-cache
 
-      - name: Clone ESP-IDF v5.0
+      - name: Clone ESP-IDF v5.1.2
         run: |
           if [ ! -d "$HOME/esp-idf" ]; then
-            git clone -b v5.0 --depth=1 https://github.com/espressif/esp-idf.git $HOME/esp-idf
+            git clone -b v5.1.2 --depth=1 https://github.com/espressif/esp-idf.git $HOME/esp-idf
           fi
-
-      - name: Patch ESP-IDF to disable ALL auto-venv creation
-        run: |
-          sed -i 's/create_virtualenv(env_dir)/return env_dir/' $HOME/esp-idf/tools/idf_tools.py
-          sed -i 's/ensure_python_env(env_path)/return env_path/' $HOME/esp-idf/tools/idf_py_actions/environment.py
 
       - name: Install ESP-IDF tools
         run: |
           cd $HOME/esp-idf
           ./install.sh esp32
 
-      - name: Create custom ESP-IDF Python environment
-        run: |
-          mkdir -p $HOME/.espressif/python_env
-          python3 -m venv $HOME/.espressif/python_env/idf_custom_env
-          $HOME/.espressif/python_env/idf_custom_env/bin/python -m pip install --upgrade pip setuptools wheel
-
-      - name: Export ESP-IDF using custom Python
-        run: |
-          export IDF_PYTHON_ENV_PATH=$HOME/.espressif/python_env/idf_custom_env
-          export IDF_TOOLS_PYTHON=$HOME/.espressif/python_env/idf_custom_env/bin/python
-          . $HOME/esp-idf/export.sh
+      - name: Export ESP-IDF
+        run: . $HOME/esp-idf/export.sh
 
       - name: Build MicroPython for ESP32
         run: |
@@ -72,4 +58,4 @@ jobs:
           path: |
             ~/.espressif
             ~/esp-idf
-          key: espidf-v5-cache
+          key: espidf-v51-cache
