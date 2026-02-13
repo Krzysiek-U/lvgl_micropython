@@ -1,46 +1,73 @@
-name: ESP32-S3 Build (single BIN)
+name: ESP32-S3 MicroPython + LVGL 8.3
 
 on:
   workflow_dispatch:
+  push:
+    branches: [ main ]
 
 jobs:
-  build:
+  build-esp32s3-lvgl:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Install system dependencies
+      - name: Install system packages
         run: |
           sudo apt-get update
-          sudo apt-get install -y git wget flex bison gperf python3-venv cmake ninja-build ccache libffi-dev libssl-dev dfu-util
+          sudo apt-get install -y git wget flex bison gperf cmake ninja-build ccache libffi-dev libssl-dev dfu-util libusb-1.0-0 python3 python3-pip
 
       - name: Clone MicroPython
         run: |
-          git clone https://github.com/micropython/micropython.git micropython
+          git clone https://github.com/micropython/micropython.git
           cd micropython
           git submodule update --init --recursive
 
-      - name: Clone ESP-IDF v5.1.2
+      - name: Clone ESP-IDF
         run: |
-          git clone -b v5.1.2 --depth=1 https://github.com/espressif/esp-idf.git $HOME/esp-idf
-
-      - name: Install ESP-IDF tools
-        run: |
-          cd $HOME/esp-idf
+          git clone -b v5.1.2 --depth=1 https://github.com/espressif/esp-idf.git
+          cd esp-idf
           ./install.sh esp32s3
 
-      - name: Build MicroPython for ESP32-S3
+      - name: Clone LVGL 8.3
         run: |
-          . $HOME/esp-idf/export.sh
+          git clone https://github.com/lvgl/lvgl.git --branch release/v8.3 --depth=1 lvgl
+
+      - name: Clone LVGL Micropython bindings
+        run: |
+          git clone https://github.com/lvgl/lv_binding_micropython.git lv_bindings
+
+      - name: Prepare LVGL in MicroPython tree
+        run: |
+          # skopiuj LVGL i bindingi do drzewa MicroPythona
+          cp -r lvgl micropython/lib/
+          cp -r lv_bindings micropython/lib/
+
+          # jeśli masz własny lv_conf.h w repo – skopiuj go tutaj
+          # zakładam, że trzymasz go w ./lv_conf.h w swoim repo
+          cp lv_conf.h micropython/ports/esp32/
+
+      - name: Patch ESP32S3 board to include LVGL
+        run: |
+          BOARD_CMAKE="micropython/ports/esp32/boards/ESP32S3_GENERIC/mpconfigboard.cmake"
+          {
+            echo 'set(LVGL_DIR "${MICROPY_DIR}/lib/lvgl")'
+            echo 'set(LV_BINDINGS_DIR "${MICROPY_DIR}/lib/lv_bindings")'
+            echo 'include(${LV_BINDINGS_DIR}/lvgl.cmake)'
+          } >> "${BOARD_CMAKE}"
+
+      - name: Build MicroPython + LVGL for ESP32-S3
+        run: |
+          . esp-idf/export.sh
           cd micropython/ports/esp32
           make submodules
           make BOARD=ESP32S3_GENERIC
 
-
-      - name: Upload firmware.bin
+      - name: Upload firmware artifact
         uses: actions/upload-artifact@v4
         with:
-          name: esp32s3-firmware
-          path: micropython/ports/esp32/build-ESP32S3_GENERIC/firmware.bin
+          name: firmware-esp32s3-lvgl
+          path: |
+            micropython/ports/esp32/build-ESP32S3_GENERIC/firmware.bin
+            micropython/ports/esp32/build-ESP32S3_GENERIC/firmware.elf
