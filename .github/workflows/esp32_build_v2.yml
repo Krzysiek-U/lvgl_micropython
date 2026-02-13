@@ -40,6 +40,11 @@ jobs:
           cd $HOME/esp-idf
           ./install.sh esp32
 
+      - name: Export ESP-IDF (skip python check)
+        run: |
+          export IDF_PYTHON_CHECK=0
+          . $HOME/esp-idf/export.sh
+
       - name: Fix ESP-IDF Python environments
         run: |
           PY_ROOT="$HOME/.espressif/python_env"
@@ -54,7 +59,7 @@ jobs:
             done
           fi
 
-      - name: Export ESP-IDF
+      - name: Export ESP-IDF (final)
         run: . $HOME/esp-idf/export.sh
 
       - name: Build MicroPython for ESP32
