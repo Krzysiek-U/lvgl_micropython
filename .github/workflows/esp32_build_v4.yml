@@ -1,0 +1,61 @@
+name: ESP32 Build v4
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git wget flex bison gperf python3-venv cmake ninja-build ccache libffi-dev libssl-dev dfu-util
+
+      - name: Restore ESP-IDF cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.espressif
+            ~/esp-idf
+          key: espidf-v51-cache
+
+      - name: Clone ESP-IDF v5.1.2
+        run: |
+          if [ ! -d "$HOME/esp-idf" ]; then
+            git clone -b v5.1.2 --depth=1 https://github.com/espressif/esp-idf.git $HOME/esp-idf
+          fi
+
+      - name: Install ESP-IDF tools
+        run: |
+          cd $HOME/esp-idf
+          ./install.sh esp32
+
+      - name: Export ESP-IDF
+        run: . $HOME/esp-idf/export.sh
+
+      - name: Build MicroPython for ESP32
+        run: |
+          cd ports/esp32
+          make submodules
+          make
+
+      - name: Save ESP-IDF cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.espressif
+            ~/esp-idf
+          key: espidf-v51-cache
