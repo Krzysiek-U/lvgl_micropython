@@ -34,7 +34,7 @@ jobs:
           cd ~/esp-idf
           ./install.sh esp32s3
 
-      #  NAPRAWA venv — BEZ export.sh
+      # 🔧 NAPRAWA venv — BEZ export.sh
       - name: Fix ESP-IDF Python environment
         run: |
           ~/esp-idf/tools/idf_tools.py install-python-env
