@@ -47,7 +47,7 @@ jobs:
         run: |
           cp -r lvgl micropython/lib/
           cp -r lv_bindings micropython/lib/
-          cp lv_bindings/lv_conf.h micropython/ports/esp32/
+          cp lv_conf.h micropython/ports/esp32/
 
       - name: Copy custom partition table
         run: |
