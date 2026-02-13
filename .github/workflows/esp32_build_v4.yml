@@ -24,9 +24,9 @@ jobs:
           cd micropython
           git submodule update --init --recursive
 
-      - name: Clone ESP-IDF
+      - name: Clone ESP-IDF (correct version for MicroPython)
         run: |
-          git clone -b v5.1.2 --depth=1 https://github.com/espressif/esp-idf.git
+          git clone -b v5.2 --depth=1 https://github.com/espressif/esp-idf.git
           cd esp-idf
           ./install.sh esp32s3
 
