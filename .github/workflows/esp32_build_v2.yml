@@ -40,27 +40,22 @@ jobs:
           cd $HOME/esp-idf
           ./install.sh esp32
 
-      - name: Export ESP-IDF (skip python check)
+      - name: Create custom ESP-IDF Python environment
         run: |
-          export IDF_PYTHON_CHECK=0
+          mkdir -p $HOME/.espressif/python_env
+          python3 -m venv $HOME/.espressif/python_env/idf_custom_env
+          $HOME/.espressif/python_env/idf_custom_env/bin/python -m pip install --upgrade pip setuptools wheel
+
+      - name: Force ESP-IDF to use custom Python environment
+        run: |
+          echo "export IDF_PYTHON_ENV_PATH=$HOME/.espressif/python_env/idf_custom_env" >> $HOME/.bashrc
+          echo "export IDF_TOOLS_PYTHON=$HOME/.espressif/python_env/idf_custom_env/bin/python" >> $HOME/.bashrc
+
+      - name: Export ESP-IDF
+        run: |
+          export IDF_PYTHON_ENV_PATH=$HOME/.espressif/python_env/idf_custom_env
+          export IDF_TOOLS_PYTHON=$HOME/.espressif/python_env/idf_custom_env/bin/python
           . $HOME/esp-idf/export.sh
-
-      - name: Fix ESP-IDF Python environments
-        run: |
-          PY_ROOT="$HOME/.espressif/python_env"
-          if [ -d "$PY_ROOT" ]; then
-            echo "Fixing all ESP-IDF Python environments..."
-            for env in "$PY_ROOT"/idf5.0_py*env; do
-              if [ -d "$env" ]; then
-                echo "Fixing: $env"
-                "$env/bin/python" -m ensurepip --upgrade || true
-                "$env/bin/python" -m pip install --upgrade pip setuptools wheel || true
-              fi
-            done
-          fi
-
-      - name: Export ESP-IDF (final)
-        run: . $HOME/esp-idf/export.sh
 
       - name: Build MicroPython for ESP32
         run: |
