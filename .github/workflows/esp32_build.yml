@@ -22,33 +22,34 @@ jobs:
           sudo apt-get install -y gcc-multilib g++-multilib lib32z1-dev
           pip install esptool Pillow wheel
 
-      # ⭐ Przywracamy cache ESP-IDF
+      # Przywracamy cache ESP-IDF (toolchain + python_env)
       - name: Restore ESP-IDF cache
         uses: actions/cache@v4
         with:
           path: ~/.espressif
           key: esp-idf-${{ runner.os }}-v5.0.2
 
-      # Ręczna instalacja ESP-IDF
+      # Ręczna instalacja ESP-IDF (najstabilniejsza metoda)
       - name: Install ESP-IDF manually
         run: |
           git clone -b v5.0.2 --recursive https://github.com/espressif/esp-idf.git ~/esp-idf
           cd ~/esp-idf
           ./install.sh esp32s3
 
-      # 🔧 Naprawa venv ESP-IDF
+      # 🔧 Naprawa venv ESP-IDF — MUSI być przed export.sh
       - name: Fix ESP-IDF Python environment
         run: |
-          . ~/esp-idf/export.sh
-          python -m pip install --upgrade pip setuptools wheel
+          ~/esp-idf/tools/idf_tools.py install-python-env
+          ~/.espressif/python_env/idf5.0_py3.10_env/bin/python -m pip install --upgrade pip setuptools wheel
 
-      # Zapisujemy cache po instalacji
+      # Zapisujemy cache po instalacji i naprawie
       - name: Save ESP-IDF cache
         uses: actions/cache@v4
         with:
           path: ~/.espressif
           key: esp-idf-${{ runner.os }}-v5.0.2
 
+      # Uruchamiamy Twój skrypt
       - name: Run My Custom Build Script
         run: |
           . ~/esp-idf/export.sh
