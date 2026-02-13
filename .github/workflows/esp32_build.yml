@@ -4,11 +4,12 @@ on: [push, pull_request, workflow_dispatch]
 jobs:
   build_esp32:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          submodules: 'recursive'
+          submodules: recursive
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -18,7 +19,6 @@ jobs:
       - name: Install System Dependencies
         run: |
           sudo apt-get update
-          # To zapewnia wsparcie dla budowania mpy-cross bez błędów architektury
           sudo apt-get install -y gcc-multilib g++-multilib lib32z1-dev
           pip install esptool Pillow wheel
 
@@ -29,13 +29,15 @@ jobs:
 
       - name: Run My Custom Build Script
         run: |
-          # Nadajemy uprawnienia do wykonywania Twojego skryptu
           chmod +x build_esp32.sh
-          # Uruchamiamy Twój własny proces budowania
+
+          # 🔥 KLUCZOWE: załaduj środowisko ESP-IDF zanim odpalisz skrypt
+          source $IDF_PATH/export.sh
+
           ./build_esp32.sh
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: firmware-esp32s3-custom
+          name: firmware-esp32s3
           path: FIRMWARE_GOTOWY_NA_0x0.bin
