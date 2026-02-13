@@ -52,11 +52,11 @@ jobs:
 
       - name: Copy custom partition table
         run: |
-          cp partitions.csv micropython/ports/esp32/boards/ESP32_GENERIC_S3_SPIRAM/
+          cp partitions.csv micropython/ports/esp32/boards/ESP32_GENERIC_S3/
 
       - name: Patch ESP32-S3 SPIRAM USB board to include LVGL + partitions
         run: |
-          BOARD_CMAKE="micropython/ports/esp32/boards/ESP32_GENERIC_S3_SPIRAM/mpconfigboard.cmake"
+          BOARD_CMAKE="micropython/ports/esp32/boards/ESP32_GENERIC_S3/mpconfigvariant_SPIRAM_OCT.cmake"
           {
             echo 'set(LVGL_DIR "${MICROPY_DIR}/lib/lvgl")'
             echo 'set(LV_BINDINGS_DIR "${MICROPY_DIR}/lib/lv_bindings")'
