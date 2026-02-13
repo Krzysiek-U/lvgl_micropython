@@ -52,7 +52,7 @@ jobs:
 
       - name: Copy custom partition table
         run: |
-          cp partitions.csv micropython/ports/esp32/boards/ESP32_GENERIC_S3_SPIRAM_USB/
+          cp partitions.csv micropython/ports/esp32/boards/ESP32_GENERIC_S3_SPIRAM/
 
       - name: Patch ESP32-S3 SPIRAM USB board to include LVGL + partitions
         run: |
@@ -69,7 +69,7 @@ jobs:
           . esp-idf/export.sh
           cd micropython/ports/esp32
           make submodules
-          make BOARD=ESP32_GENERIC_S3_SPIRAM_USB
+          make BOARD=ESP32_GENERIC_S3_SPIRAM
         shell: bash
 
       - name: Upload firmware artifact
@@ -77,5 +77,5 @@ jobs:
         with:
           name: firmware-esp32s3-spiram-usb-lvgl
           path: |
-            micropython/ports/esp32/build-ESP32_GENERIC_S3_SPIRAM_USB/firmware.bin
-            micropython/ports/esp32/build-ESP32_GENERIC_S3_SPIRAM_USB/firmware.elf
+            micropython/ports/esp32/build-ESP32_GENERIC_S3_SPIRAM/firmware.bin
+            micropython/ports/esp32/build-ESP32_GENERIC_S3_SPIRAM/firmware.elf
