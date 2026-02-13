@@ -50,7 +50,7 @@ jobs:
 
       - name: Patch ESP32S3 board to include LVGL
         run: |
-          BOARD_CMAKE="micropython/ports/esp32/boards/ESP32S3_GENERIC/mpconfigboard.cmake"
+          BOARD_CMAKE="micropython/ports/esp32/boards/ESP32_GENERIC_S3/mpconfigboard.cmake"
           {
             echo 'set(LVGL_DIR "${MICROPY_DIR}/lib/lvgl")'
             echo 'set(LV_BINDINGS_DIR "${MICROPY_DIR}/lib/lv_bindings")'
@@ -62,7 +62,7 @@ jobs:
           . esp-idf/export.sh
           cd micropython/ports/esp32
           make submodules
-          make BOARD=ESP32S3_GENERIC
+          make BOARD=ESP32_GENERIC_S3
 
       - name: Upload firmware artifact
         uses: actions/upload-artifact@v4
