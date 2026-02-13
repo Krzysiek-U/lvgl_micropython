@@ -36,7 +36,7 @@ jobs:
           cd ~/esp-idf
           ./install.sh esp32s3
 
-      # Naprawa venv ESP-IDF — MUSI być przed export.sh
+      # Naprawa venv ESP-IDF — BEZ export.sh
       - name: Fix ESP-IDF Python environment
         run: |
           ~/esp-idf/tools/idf_tools.py install-python-env
@@ -49,7 +49,7 @@ jobs:
           path: ~/.espressif
           key: esp-idf-${{ runner.os }}-v5.0.2
 
-      # Uruchamiamy Twój skrypt
+      # Uruchamiamy Twój skrypt — TERAZ export.sh działa
       - name: Run My Custom Build Script
         run: |
           . ~/esp-idf/export.sh
