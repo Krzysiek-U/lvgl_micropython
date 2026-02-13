@@ -18,17 +18,22 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y git wget flex bison gperf cmake ninja-build ccache libffi-dev libssl-dev dfu-util libusb-1.0-0 python3 python3-pip
 
-      - name: Clone MicroPython (latest master)
+      - name: Clone MicroPython (master)
         run: |
           git clone --depth=1 --branch master https://github.com/micropython/micropython.git
           cd micropython
           git submodule update --init --recursive
 
-      - name: Clone ESP-IDF (v5.2 for MicroPython master)
+      - name: Clone ESP-IDF (v5.2)
         run: |
           git clone -b v5.2 --depth=1 https://github.com/espressif/esp-idf.git
           cd esp-idf
           ./install.sh esp32s3
+
+      - name: Export ESP-IDF environment
+        run: |
+          . esp-idf/export.sh
+        shell: bash
 
       - name: Clone LVGL 8.3
         run: |
@@ -38,19 +43,24 @@ jobs:
         run: |
           git clone https://github.com/lvgl/lv_binding_micropython.git lv_bindings
 
-      - name: Prepare LVGL in MicroPython tree
+      - name: Copy LVGL into MicroPython tree
         run: |
           cp -r lvgl micropython/lib/
           cp -r lv_bindings micropython/lib/
-          cp lv_conf.h micropython/ports/esp32/
+          cp lv_bindings/lv_conf.h micropython/ports/esp32/
 
-      - name: Patch ESP32-S3 SPIRAM USB board to include LVGL
+      - name: Copy custom partition table
+        run: |
+          cp partitions.csv micropython/ports/esp32/boards/ESP32_GENERIC_S3_SPIRAM_USB/
+
+      - name: Patch ESP32-S3 SPIRAM USB board to include LVGL + partitions
         run: |
           BOARD_CMAKE="micropython/ports/esp32/boards/ESP32_GENERIC_S3_SPIRAM_USB/mpconfigboard.cmake"
           {
             echo 'set(LVGL_DIR "${MICROPY_DIR}/lib/lvgl")'
             echo 'set(LV_BINDINGS_DIR "${MICROPY_DIR}/lib/lv_bindings")'
             echo 'include(${LV_BINDINGS_DIR}/lvgl.cmake)'
+            echo 'set(BOARD_PARTITION_TABLE "${MICROPY_BOARD_DIR}/partitions.csv")'
           } >> "${BOARD_CMAKE}"
 
       - name: Build MicroPython + LVGL for ESP32-S3 SPIRAM USB
@@ -59,6 +69,7 @@ jobs:
           cd micropython/ports/esp32
           make submodules
           make BOARD=ESP32_GENERIC_S3_SPIRAM_USB
+        shell: bash
 
       - name: Upload firmware artifact
         uses: actions/upload-artifact@v4
