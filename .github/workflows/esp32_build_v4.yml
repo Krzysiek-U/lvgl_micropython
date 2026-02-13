@@ -45,7 +45,8 @@ jobs:
 
       - name: Copy LVGL into MicroPython tree
         run: |
-          cp -r lvgl micropython/lib/
+          mkdir -p micropython/lib/lvgl
+          cp -r lvgl/* micropython/lib/lvgl/
           cp -r lv_bindings micropython/lib/
           cp lv_conf.h micropython/ports/esp32/
 
