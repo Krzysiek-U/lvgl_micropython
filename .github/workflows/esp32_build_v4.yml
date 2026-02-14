@@ -40,7 +40,8 @@ jobs:
       - name: Config-Board
         run: |
           BOARD_DIR="micropython/ports/esp32/boards/ESP32_GENERIC_S3"
-          printf "nvs, data, nvs, 0x9000, 0x6000,\notadata, data, ota, 0xf000, 0x2000,\nphy_init, data, phy, 0x11000, 0x1000,\nfactory, app, factory, 0x20000, 0x600000,\nvfs, data, fat, 0x620000, 0x900000,\n" > ${BOARD_DIR}/partitions.csv
+          # Zmieniamy factory na 5MB (0x500000) i przesuwamy vfs na 0x520000
+          printf "nvs, data, nvs, 0x9000, 0x6000,\notadata, data, ota, 0xf000, 0x2000,\nphy_init, data, phy, 0x11000, 0x1000,\nfactory, app, factory, 0x20000, 0x500000,\nvfs, data, fat, 0x520000, 0xA00000,\n" > ${BOARD_DIR}/partitions.csv
           
           printf "CONFIG_SPIRAM=y\nCONFIG_SPIRAM_MODE_OCT=y\nCONFIG_SPIRAM_SPEED_80M=y\nCONFIG_SPIRAM_BOOT_INIT=y\nCONFIG_ESP32S3_FLASH_VOLTAGE_1_8V=y\nCONFIG_ESP32S3_SPIRAM_VOLTAGE_1_8V=y\nCONFIG_ESPTOOLPY_FLASHSIZE_16MB=y\nCONFIG_BOARD_PARTITION_TABLE=\"partitions.csv\"\n" > ${BOARD_DIR}/sdkconfig.board
 
