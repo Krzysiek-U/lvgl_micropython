@@ -79,22 +79,27 @@ jobs:
           # 1. Budowa mpy-cross
           make -C micropython/mpy-cross
           
-          # 2. Pełna inicjalizacja wszystkich submodułów w micropythonie
-          cd micropython
+          # 2. Inicjalizacja submodułów LVGL (Kluczowe!)
+          # Bez tego CMake wywala się na braku lvgl.h
+          cd micropython/lib/lv_bindings
           git submodule update --init --recursive
           
-          # 3. Kopiowanie lv_conf.h do portu esp32
+          # 3. Inicjalizacja submodułów MicroPythona
+          cd ../..
+          git submodule update --init --recursive
+          
+          # 4. Kopiowanie lv_conf.h do portu esp32
           cp ../lv_conf.h ports/esp32/
           
-          # 4. Wejście do portu i inicjalizacja specyficzna dla ESP32
+          # 5. Inicjalizacja portu i kompilacja
           cd ports/esp32
           make BOARD=ESP32_GENERIC_S3 submodules
           
-          # 5. Kompilacja z użyciem absolutnej ścieżki (PWD)
-          # To rozwiązuje błąd "Configuring incomplete" w CMake
+          # Używamy ścieżki absolutnej $(pwd) dla stabilności CMake
           make BOARD=ESP32_GENERIC_S3 \
                USER_C_MODULES=$(pwd)/../../lib/lv_bindings/bindings.cmake
         shell: bash
+
 
 
       - name: Artifacts
