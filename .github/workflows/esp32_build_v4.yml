@@ -100,8 +100,6 @@ jobs:
           # 5. Kopiowanie gotowej binarki do standardowego miejsca dla Artifacts
           cp build/firmware.bin firmware.bin
         shell: bash
-bash
-
 
 
       - name: Artifacts
