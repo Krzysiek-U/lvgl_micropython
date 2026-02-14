@@ -76,27 +76,30 @@ jobs:
         run: |
           source esp-idf/export.sh
           
-          # 1. Budowa mpy-cross
+          # 1. Budowa mpy-cross (niezbędny do kompilacji bindingów)
           make -C micropython/mpy-cross
           
-          # 2. Przygotowanie folderu portu i plików
+          # 2. Przygotowanie LVGL i portu
           cd micropython/ports/esp32
+          
+          # Kopiujemy konfigurację LVGL do folderu portu
           cp $GITHUB_WORKSPACE/lv_conf.h .
           
-          # 3. Definiujemy ścieżkę do modułów (do katalogu, nie do pliku .cmake)
-          # lv_binding_micropython zawiera micropython.cmake, który idf.py sam znajdzie
-          export USER_C_MODULES=$GITHUB_WORKSPACE/micropython/lib/lv_bindings/
+          # Kluczowa zmiana: Ścieżka musi prowadzić do FOLDERU, w którym jest micropython.cmake
+          # W lv_binding_micropython plik ten znajduje się bezpośrednio w głównym katalogu bindingów
+          export LVGL_MODULES="$GITHUB_WORKSPACE/micropython/lib/lv_bindings/micropython.cmake"
           
-          # 4. Inicjalizacja submodułów portu
+          # 3. Inicjalizacja submodułów specyficznych dla ESP32
           make BOARD=ESP32_GENERIC_S3 submodules
           
-          # 5. Budowanie przy użyciu standardowego Makefile MicroPythona (to najbezpieczniejsza metoda)
-          # Makefile sam wywoła idf.py z odpowiednimi parametrami
-          make BOARD=ESP32_GENERIC_S3 USER_C_MODULES=$USER_C_MODULES
+          # 4. Kompilacja przy użyciu Makefile (który sam obsłuży idf.py)
+          # Przekazujemy USER_C_MODULES jako absolutną ścieżkę do pliku .cmake
+          make BOARD=ESP32_GENERIC_S3 USER_C_MODULES="$LVGL_MODULES"
           
-          # 6. Kopiowanie gotowej binarki
+          # 5. Kopiowanie gotowego firmware
           cp build-ESP32_GENERIC_S3/firmware.bin $GITHUB_WORKSPACE/firmware.bin
         shell: bash
+
 
 
 
