@@ -76,22 +76,26 @@ jobs:
         run: |
           source esp-idf/export.sh
           
-          # 1. Budowa mpy-cross
+          # 1. Instalacja menedżera komponentów (wymagane dla IDF v5+)
+          pip install idf-component-manager
+          
+          # 2. Budowa mpy-cross
           make -C micropython/mpy-cross
           
-          # 2. Kopiowanie lv_conf.h (używając ścieżki absolutnej)
-          cp $GITHUB_WORKSPACE/lv_conf.h micropython/ports/esp32/
+          # 3. Kopiowanie lv_conf.h do portu (używając PWD dla pewności)
+          cp lv_conf.h micropython/ports/esp32/
           
-          # 3. Wejście do portu i inicjalizacja submodułów
+          # 4. Inicjalizacja submodułów portu (naprawia btree/berkeley-db)
           cd micropython/ports/esp32
           make BOARD=ESP32_GENERIC_S3 submodules
           
-          # 4. Kompilacja właściwa z wymuszeniem celu (target) i ścieżki absolutnej do modułów
-          # To rozwiązuje błędy CMake w IDF v5
+          # 5. Kompilacja właściwa z JAWNYM wskazaniem celu i ścieżki absolutnej
+          # Używamy $(pwd) aby CMake nie zgubił ścieżki do bindings.cmake
           make BOARD=ESP32_GENERIC_S3 \
                IDF_TARGET=esp32s3 \
-               USER_C_MODULES=$GITHUB_WORKSPACE/micropython/lib/lv_bindings/bindings.cmake
+               USER_C_MODULES=$(pwd)/../../lib/lv_bindings/bindings.cmake
         shell: bash
+
 
 
       - name: Artifacts
