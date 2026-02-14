@@ -44,11 +44,23 @@ jobs:
       - name: Build-All
         run: |
           source esp-idf/export.sh
+          
+          # 1. Budujemy mpy-cross
           make -C micropython/mpy-cross
-          cd micropython && git submodule update --init --recursive lib/berkeley-db-1.85 lib/mbedtls lib/tinyusb && make submodules
+          
+          # 2. Inicjalizacja WSZYSTKICH submodułów (naprawia błąd btree / berkeley-db)
+          cd micropython
+          git submodule update --init --recursive
+          
+          # 3. Kompilacja portu ESP32
           cd ports/esp32
+          # Wymuszamy pobranie submodułów specyficznych dla portu (np. btree)
+          make BOARD=ESP32_GENERIC_S3 submodules
+          
+          # 4. Główne budowanie z LVGL
           make BOARD=ESP32_GENERIC_S3 USER_C_MODULES=../../lib/lv_bindings/bindings.cmake
         shell: bash
+
 
       - name: Artifacts
         uses: actions/upload-artifact@v4
