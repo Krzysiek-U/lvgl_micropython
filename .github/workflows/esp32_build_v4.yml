@@ -8,7 +8,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout main repo
         uses: actions/checkout@v4
 
       - name: Deps
@@ -16,12 +16,28 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y git wget flex bison gperf cmake ninja-build ccache libffi-dev libssl-dev dfu-util libusb-1.0-0 python3 python3-pip
 
-      - name: Clone-Repos
-        run: |
-          git clone --depth 1 --branch v1.22.2 https://github.com micropython
-          git clone -b v5.0.4 --depth 1 --recursive https://github.com esp-idf
-          git clone --recursive https://github.com micropython/lib/lv_bindings
-          cd micropython/lib/lv_bindings && git submodule update --init --recursive
+      - name: Checkout MicroPython
+        uses: actions/checkout@v4
+        with:
+          repository: micropython/micropython
+          ref: v1.22.2
+          path: micropython
+          submodules: recursive
+
+      - name: Checkout ESP-IDF
+        uses: actions/checkout@v4
+        with:
+          repository: espressif/esp-idf
+          ref: v5.0.4
+          path: esp-idf
+          submodules: recursive
+
+      - name: Checkout LVGL Bindings
+        uses: actions/checkout@v4
+        with:
+          repository: lvgl/lv_binding_micropython
+          path: micropython/lib/lv_bindings
+          submodules: recursive
 
       - name: Install-IDF
         run: |
@@ -56,9 +72,8 @@ jobs:
         run: |
           source esp-idf/export.sh
           make -C micropython/mpy-cross
-          cd micropython && git submodule update --init --recursive
-          cp ../lv_conf.h ports/esp32/
-          cd ports/esp32
+          cp lv_conf.h micropython/ports/esp32/
+          cd micropython/ports/esp32
           make BOARD=ESP32_GENERIC_S3 submodules
           make BOARD=ESP32_GENERIC_S3 USER_C_MODULES=$(pwd)/../../lib/lv_bindings/bindings.cmake
         shell: bash
