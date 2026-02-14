@@ -76,25 +76,26 @@ jobs:
         run: |
           source esp-idf/export.sh
           
-          # 1. Instalacja menedżera komponentów (wymagane dla IDF v5+)
-          pip install idf-component-manager
-          
-          # 2. Budowa mpy-cross
+          # 1. Budowa mpy-cross
           make -C micropython/mpy-cross
           
-          # 3. Kopiowanie lv_conf.h do portu (używając PWD dla pewności)
-          cp lv_conf.h micropython/ports/esp32/
+          # 2. Pełna inicjalizacja wszystkich submodułów (naprawia braki w lib/ i extmod/)
+          cd micropython
+          git submodule update --init --recursive
           
-          # 4. Inicjalizacja submodułów portu (naprawia btree/berkeley-db)
-          cd micropython/ports/esp32
+          # 3. Kopiowanie lv_conf.h bezpośrednio do portu (miejsce oczekiwane przez bindings)
+          cp ../lv_conf.h ports/esp32/
+          
+          # 4. Wejście do portu i inicjalizacja specyficzna dla ESP32
+          cd ports/esp32
           make BOARD=ESP32_GENERIC_S3 submodules
           
-          # 5. Kompilacja właściwa z JAWNYM wskazaniem celu i ścieżki absolutnej
-          # Używamy $(pwd) aby CMake nie zgubił ścieżki do bindings.cmake
+          # 5. Kompilacja z użyciem absolutnej ścieżki (PWD)
+          # To rozwiązuje błąd "Configuring incomplete" w CMake
           make BOARD=ESP32_GENERIC_S3 \
-               IDF_TARGET=esp32s3 \
                USER_C_MODULES=$(pwd)/../../lib/lv_bindings/bindings.cmake
         shell: bash
+
 
 
 
