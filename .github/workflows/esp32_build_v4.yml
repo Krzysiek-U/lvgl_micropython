@@ -75,19 +75,24 @@ jobs:
       - name: Build-All
         run: |
           source esp-idf/export.sh
-          # Budowa mpy-cross
+          
+          # 1. Budowa mpy-cross
           make -C micropython/mpy-cross
           
-          # Kopiujemy Twój lv_conf.h do folderu portu (wymagane przez bindings)
-          cp lv_conf.h micropython/ports/esp32/
+          # 2. Kopiowanie lv_conf.h (używając ścieżki absolutnej)
+          cp $GITHUB_WORKSPACE/lv_conf.h micropython/ports/esp32/
           
+          # 3. Wejście do portu i inicjalizacja submodułów
           cd micropython/ports/esp32
-          # Inicjalizacja submodułów portu
           make BOARD=ESP32_GENERIC_S3 submodules
           
-          # Kompilacja z LVGL (USER_C_MODULES)
-          make BOARD=ESP32_GENERIC_S3 USER_C_MODULES=../../lib/lv_bindings/bindings.cmake
+          # 4. Kompilacja właściwa z wymuszeniem celu (target) i ścieżki absolutnej do modułów
+          # To rozwiązuje błędy CMake w IDF v5
+          make BOARD=ESP32_GENERIC_S3 \
+               IDF_TARGET=esp32s3 \
+               USER_C_MODULES=$GITHUB_WORKSPACE/micropython/lib/lv_bindings/bindings.cmake
         shell: bash
+
 
       - name: Artifacts
         uses: actions/upload-artifact@v4
