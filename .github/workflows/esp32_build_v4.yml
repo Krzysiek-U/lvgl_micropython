@@ -79,27 +79,25 @@ jobs:
           # 1. Budowa mpy-cross
           make -C micropython/mpy-cross
           
-          # 2. Inicjalizacja submodułów
-          cd micropython
-          git submodule update --init --recursive
-          cd lib/lv_bindings
-          git submodule update --init --recursive
-          
-          # 3. Przygotowanie folderu portu
-          cd ../../ports/esp32
+          # 2. Przygotowanie folderu portu i plików
+          cd micropython/ports/esp32
           cp $GITHUB_WORKSPACE/lv_conf.h .
+          
+          # 3. Definiujemy ścieżkę do modułów (do katalogu, nie do pliku .cmake)
+          # lv_binding_micropython zawiera micropython.cmake, który idf.py sam znajdzie
+          export USER_C_MODULES=$GITHUB_WORKSPACE/micropython/lib/lv_bindings/
+          
+          # 4. Inicjalizacja submodułów portu
           make BOARD=ESP32_GENERIC_S3 submodules
           
-          # 4. OBEJŚCIE: Bezpośrednie wywołanie idf.py z flagą modułów
-          # To ignoruje błędy Makefile i wymusza konfigurację CMake
-          export USER_C_MODULES=$GITHUB_WORKSPACE/micropython/lib/lv_bindings/bindings.cmake
-          idf.py -D MICROPY_BOARD=ESP32_GENERIC_S3 \
-                 -D USER_C_MODULES=${USER_C_MODULES} \
-                 build
-                 
-          # 5. Kopiowanie gotowej binarki do standardowego miejsca dla Artifacts
-          cp build/firmware.bin firmware.bin
+          # 5. Budowanie przy użyciu standardowego Makefile MicroPythona (to najbezpieczniejsza metoda)
+          # Makefile sam wywoła idf.py z odpowiednimi parametrami
+          make BOARD=ESP32_GENERIC_S3 USER_C_MODULES=$USER_C_MODULES
+          
+          # 6. Kopiowanie gotowej binarki
+          cp build-ESP32_GENERIC_S3/firmware.bin $GITHUB_WORKSPACE/firmware.bin
         shell: bash
+
 
 
       - name: Artifacts
