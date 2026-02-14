@@ -75,23 +75,25 @@ jobs:
       - name: Build-All
         run: |
           source esp-idf/export.sh
+          
+          # 1. Budowa mpy-cross
           make -C micropython/mpy-cross
           
-          # 1. Wymuszenie poprawnej ścieżki dla LVGL bindings
-          # Jeśli klonowałeś to wcześniej do micropython/lib/lv_bindings, upewnijmy się, że tam jest
-          ls -d $GITHUB_WORKSPACE/micropython/lib/lv_bindings
-          
-          # 2. Inicjalizacja submodułów
-          cd micropython
+          # 2. Inicjalizacja submodułów LVGL (Kluczowe!)
+          cd micropython/lib/lv_bindings
           git submodule update --init --recursive
-          cp ../lv_conf.h ports/esp32/
           
-          # 3. Kompilacja
-          cd ports/esp32
+          # 3. Kopiowanie lv_conf.h do portu esp32
+          cd ../../ports/esp32
+          cp ../../../lv_conf.h .
+          
+          # 4. Inicjalizacja submodułów portu
           make BOARD=ESP32_GENERIC_S3 submodules
           
-          # KLUCZOWA ZMIANA: Podajemy ścieżkę do FOLDERU, nie do pliku .cmake
-          make BOARD=ESP32_GENERIC_S3 USER_C_MODULES=$GITHUB_WORKSPACE/micropython/lib/lv_bindings
+          # 5. Kompilacja - wskazujemy FOLDER, nie plik .cmake
+          # Używamy ścieżki absolutnej $(pwd)
+          make BOARD=ESP32_GENERIC_S3 \
+               USER_C_MODULES=$(pwd)/../../lib/lv_bindings
         shell: bash
 
 
