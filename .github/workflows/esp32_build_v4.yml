@@ -58,7 +58,7 @@ jobs:
           vfs,      data, fat,     0x620000, 0x900000,
           EOF
           
-          # 2. Konfiguracja sprzętowa (Octal RAM + Flash Voltage)
+          # 2. Konfiguracja sprzętowa (Napięcia 1.8V + Octal SPIRAM)
           cat <<EOF > ${BOARD_DIR}/sdkconfig.board
           CONFIG_SPIRAM=y
           CONFIG_SPIRAM_MODE_OCT=y
@@ -76,32 +76,25 @@ jobs:
         run: |
           source esp-idf/export.sh
           
-          # 1. Budowa mpy-cross (niezbędny do kompilacji bindingów)
+          # 1. Budowa mpy-cross (wymagany)
           make -C micropython/mpy-cross
           
-          # 2. Przygotowanie LVGL i portu
-          cd micropython/ports/esp32
+          # 2. Inicjalizacja submodułu LVGL wewnątrz bindings
+          cd micropython/lib/lv_bindings
+          git submodule update --init --recursive
           
-          # Kopiujemy konfigurację LVGL do folderu portu
+          # 3. Kopiowanie Twojego lv_conf.h do portu esp32
+          cd ../../ports/esp32
           cp $GITHUB_WORKSPACE/lv_conf.h .
           
-          # Kluczowa zmiana: Ścieżka musi prowadzić do FOLDERU, w którym jest micropython.cmake
-          # W lv_binding_micropython plik ten znajduje się bezpośrednio w głównym katalogu bindingów
-          export LVGL_MODULES="$GITHUB_WORKSPACE/micropython/lib/lv_bindings/micropython.cmake"
-          
-          # 3. Inicjalizacja submodułów specyficznych dla ESP32
+          # 4. Inicjalizacja submodułów portu (naprawia btree/berkeley-db)
           make BOARD=ESP32_GENERIC_S3 submodules
           
-          # 4. Kompilacja przy użyciu Makefile (który sam obsłuży idf.py)
-          # Przekazujemy USER_C_MODULES jako absolutną ścieżkę do pliku .cmake
-          make BOARD=ESP32_GENERIC_S3 USER_C_MODULES="$LVGL_MODULES"
+          # 5. Kompilacja właściwa - wskazujemy FOLDER lv_bindings
+          # Używamy ścieżki absolutnej dla stabilności CMake
+          make BOARD=ESP32_GENERIC_S3 USER_C_MODULES=$GITHUB_WORKSPACE/micropython/lib/lv_bindings
           
-          # 5. Kopiowanie gotowego firmware
-          cp build-ESP32_GENERIC_S3/firmware.bin $GITHUB_WORKSPACE/firmware.bin
         shell: bash
-
-
-
 
       - name: Artifacts
         uses: actions/upload-artifact@v4
