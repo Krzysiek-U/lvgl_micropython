@@ -18,15 +18,16 @@ jobs:
 
       - name: Clone-Repos
         run: |
-          MPY="https://github.com/""micropython/micropython.git"
-          IDF="https://github.com/""espressif/esp-idf.git"
-          LVB="https://github.com/""lvgl/lv_binding_micropython.git"
+          # Adresy URL
+          MPY="https://github.com"
+          IDF="https://github.com"
+          LVB="https://github.com"
           
           git clone --depth 1 --branch v1.22.2 "$MPY" micropython
           git clone --depth 1 --branch v5.0.4 --recursive "$IDF" esp-idf
           git clone --recursive "$LVB" micropython/lib/lv_bindings
           
-          # KLUCZOWE: dociągnięcie brakujących plików LVGL wewnątrz bindings
+          # Dociągnięcie submodułu LVGL
           cd micropython/lib/lv_bindings
           git submodule update --init --recursive
         shell: bash
@@ -40,36 +41,52 @@ jobs:
       - name: Config-Board
         run: |
           BOARD_DIR="micropython/ports/esp32/boards/ESP32_GENERIC_S3"
-          # Zmieniamy factory na 5MB (0x500000) i przesuwamy vfs na 0x520000
-          printf "nvs, data, nvs, 0x9000, 0x6000,\notadata, data, ota, 0xf000, 0x2000,\nphy_init, data, phy, 0x11000, 0x1000,\nfactory, app, factory, 0x20000, 0x500000,\nvfs, data, fat, 0x520000, 0xA00000,\n" > ${BOARD_DIR}/partitions.csv
           
-          printf "CONFIG_SPIRAM=y\nCONFIG_SPIRAM_MODE_OCT=y\nCONFIG_SPIRAM_SPEED_80M=y\nCONFIG_SPIRAM_BOOT_INIT=y\nCONFIG_ESP32S3_FLASH_VOLTAGE_1_8V=y\nCONFIG_ESP32S3_SPIRAM_VOLTAGE_1_8V=y\nCONFIG_ESPTOOLPY_FLASHSIZE_16MB=y\nCONFIG_BOARD_PARTITION_TABLE=\"partitions.csv\"\n" > ${BOARD_DIR}/sdkconfig.board
+          # 1. Tworzymy poprawną tabelę partycji (wyrównanie do 0x1000)
+          cat <<EOF > ${BOARD_DIR}/partitions.csv
+          nvs,      data, nvs,     0x9000,   0x6000,
+          otadata,  data, ota,     0xf000,   0x2000,
+          phy_init, data, phy,     0x11000,  0x1000,
+          factory,  app,  factory, 0x20000,  0x600000,
+          vfs,      data, fat,     0x620000, 0x900000,
+          EOF
+          
+          # 2. Konfiguracja SPIRAM N16R8 + Napięcie 1.8V + Wymuszenie partycji
+          cat <<EOF > ${BOARD_DIR}/sdkconfig.board
+          CONFIG_SPIRAM=y
+          CONFIG_SPIRAM_MODE_OCT=y
+          CONFIG_SPIRAM_SPEED_80M=y
+          CONFIG_SPIRAM_BOOT_INIT=y
+          CONFIG_ESP32S3_FLASH_VOLTAGE_1_8V=y
+          CONFIG_ESP32S3_SPIRAM_VOLTAGE_1_8V=y
+          CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
+          CONFIG_PARTITION_TABLE_CUSTOM=y
+          CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
+          CONFIG_PARTITION_TABLE_FILENAME="partitions.csv"
+          EOF
 
       - name: Build-All
         run: |
           source esp-idf/export.sh
           
-          # 1. Budujemy mpy-cross
+          # Budowa mpy-cross
           make -C micropython/mpy-cross
           
-          # 2. Inicjalizacja submodułów MicroPythona
+          # Inicjalizacja submodułów głównych
           cd micropython
           git submodule update --init --recursive
           
-          # 3. Kopiowanie lv_conf.h do folderu portu
+          # Kopiowanie lv_conf.h
           cp ../lv_conf.h ports/esp32/
           
-          # 4. Submoduły portu ESP32
+          # Submoduły portu i kompilacja
           cd ports/esp32
           make BOARD=ESP32_GENERIC_S3 submodules
-          
-          # 5. Kompilacja właściwa z LVGL
-          # USER_C_MODULES musi wskazywać na plik cmake wewnątrz bindings
           make BOARD=ESP32_GENERIC_S3 USER_C_MODULES=../../lib/lv_bindings/bindings.cmake
         shell: bash
 
       - name: Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: firmware-lvgl
+          name: firmware-lvgl-n16r8
           path: micropython/ports/esp32/build-ESP32_GENERIC_S3/firmware.bin
