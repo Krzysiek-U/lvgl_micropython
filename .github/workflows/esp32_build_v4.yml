@@ -18,7 +18,6 @@ jobs:
 
       - name: Clone-Repos
         run: |
-          # Dynamiczne składanie adresów, aby ominąć błąd parsera
           MPY="https://github.com/""micropython/micropython.git"
           IDF="https://github.com/""espressif/esp-idf.git"
           LVB="https://github.com/""lvgl/lv_binding_micropython.git"
@@ -26,6 +25,10 @@ jobs:
           git clone --depth 1 --branch v1.22.2 "$MPY" micropython
           git clone --depth 1 --branch v5.0.4 --recursive "$IDF" esp-idf
           git clone --recursive "$LVB" micropython/lib/lv_bindings
+          
+          # KLUCZOWE: dociągnięcie brakujących plików LVGL wewnątrz bindings
+          cd micropython/lib/lv_bindings
+          git submodule update --init --recursive
         shell: bash
 
       - name: Install-IDF
@@ -48,22 +51,21 @@ jobs:
           # 1. Budujemy mpy-cross
           make -C micropython/mpy-cross
           
-          # 2. Inicjalizacja submodułów
+          # 2. Inicjalizacja submodułów MicroPythona
           cd micropython
           git submodule update --init --recursive
           
-          # 3. Kopiowanie lv_conf.h (wychodzimy z micropython/ do głównego folderu repo)
+          # 3. Kopiowanie lv_conf.h do folderu portu
           cp ../lv_conf.h ports/esp32/
           
-          # 4. Submoduły portu
+          # 4. Submoduły portu ESP32
           cd ports/esp32
           make BOARD=ESP32_GENERIC_S3 submodules
           
-          # 5. Kompilacja właściwa
+          # 5. Kompilacja właściwa z LVGL
+          # USER_C_MODULES musi wskazywać na plik cmake wewnątrz bindings
           make BOARD=ESP32_GENERIC_S3 USER_C_MODULES=../../lib/lv_bindings/bindings.cmake
         shell: bash
-
-
 
       - name: Artifacts
         uses: actions/upload-artifact@v4
