@@ -8,6 +8,10 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      MPY_URL: "https://github.com"
+      IDF_URL: "https://github.com"
+      LV_URL: "https://github.com"
 
     steps:
       - name: Checkout
@@ -15,14 +19,14 @@ jobs:
 
       - name: Install dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y git wget flex bison gperf cmake ninja-build ccache libffi-dev libssl-dev dfu-util libusb-1.0-0 python3 python3-pip
+          sudo apt update
+          sudo apt install -y git wget flex bison gperf cmake ninja-build ccache libffi-dev libssl-dev dfu-util libusb-1.0-0 python3 python3-pip
 
       - name: Clone repositories
         run: |
-          git clone --depth 1 --branch v1.22.2 "https://github.com"
-          git clone -b v5.0.4 --depth 1 --recursive "https://github.com"
-          git clone --recursive "https://github.com" micropython/lib/lv_bindings
+          git clone --depth 1 --branch v1.22.2 "$MPY_URL" micropython
+          git clone --depth 1 --branch v5.0.4 --recursive "$IDF_URL" esp-idf
+          git clone --recursive "$LV_URL" micropython/lib/lv_bindings
 
       - name: Install ESP-IDF
         run: |
