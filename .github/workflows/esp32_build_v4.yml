@@ -76,24 +76,25 @@ jobs:
         run: |
           source esp-idf/export.sh
           
-          # 1. Budowa mpy-cross
+          # 1. Budowa mpy-cross (wymagane)
           make -C micropython/mpy-cross
           
-          # 2. Inicjalizacja submodułów LVGL (Kluczowe!)
+          # 2. Inicjalizacja kodu LVGL wewnątrz bindings
+          # Bez tego CMake wywali błąd "Incomplete configuration"
           cd micropython/lib/lv_bindings
           git submodule update --init --recursive
           
-          # 3. Kopiowanie lv_conf.h do portu esp32
-          cd ../../ports/esp32
-          cp ../../../lv_conf.h .
+          # 3. Powrót do portu ESP32 i kopiowanie konfiguracji
+          cd $GITHUB_WORKSPACE/micropython/ports/esp32
+          cp $GITHUB_WORKSPACE/lv_conf.h .
           
-          # 4. Inicjalizacja submodułów portu
+          # 4. Inicjalizacja submodułów portu (np. btree, berkeley-db)
           make BOARD=ESP32_GENERIC_S3 submodules
           
-          # 5. Kompilacja - wskazujemy FOLDER, nie plik .cmake
-          # Używamy ścieżki absolutnej $(pwd)
+          # 5. Kompilacja - USER_C_MODULES musi być ścieżką ABSOLUTNĄ do FOLDERU
+          # To rozwiązuje błędy CMake w IDF v5
           make BOARD=ESP32_GENERIC_S3 \
-               USER_C_MODULES=$(pwd)/../../lib/lv_bindings
+               USER_C_MODULES=$GITHUB_WORKSPACE/micropython/lib/lv_bindings
         shell: bash
 
 
