@@ -1,4 +1,4 @@
-name: ESP32-S3 MicroPython + LVGL (SPIRAM + USB)
+name: ESP32-S3 MicroPython + LVGL (N16R8 Octal SPI)
 
 on:
   workflow_dispatch:
@@ -18,64 +18,71 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y git wget flex bison gperf cmake ninja-build ccache libffi-dev libssl-dev dfu-util libusb-1.0-0 python3 python3-pip
 
-      - name: Clone MicroPython (master)
+      - name: Clone MicroPython (v1.22.2)
         run: |
-          git clone --depth=1 --branch master https://github.com/micropython/micropython.git
+          # Używamy stabilnej wersji v1.22.2, która świetnie działa z LVGL 8.3
+          git clone --depth=1 --branch v1.22.2 https://github.com
           cd micropython
-          git submodule update --init --recursive
+          git submodule update --init --recursive lib/berkeley-db-1.85 lib/mbedtls lib/tinyusb
 
-      - name: Clone ESP-IDF (v5.2)
+      - name: Clone ESP-IDF (v5.0.4)
         run: |
-          git clone -b v5.2 --depth=1 https://github.com/espressif/esp-idf.git
+          # v5.0.4 ma wszystkie sterowniki SPI i LCD "na miejscu" (unikniesz błędu add-dependency)
+          git clone -b v5.0.4 --depth=1 --recursive https://github.com
           cd esp-idf
           ./install.sh esp32s3
 
-      - name: Export ESP-IDF environment
-        run: |
-          . esp-idf/export.sh
-        shell: bash
-
-      - name: Clone LVGL 8.3
-        run: |
-          git clone https://github.com/lvgl/lvgl.git --branch release/v8.3 --depth=1 lvgl
-
       - name: Clone LVGL Micropython bindings
         run: |
-          git clone https://github.com/lvgl/lv_binding_micropython.git lv_bindings
+          # Klonujemy bindings i ich submoduł lvgl
+          git clone --recursive https://github.com lib/lv_bindings
 
-      - name: Copy LVGL into MicroPython tree
+      - name: Prepare Board Config (N16R8 Octal + 16MB Flash)
         run: |
-          mkdir -p micropython/lib/lvgl
-          cp -r lvgl/* micropython/lib/lvgl/
-          cp -r lv_bindings micropython/lib/
-          cp lv_conf.h micropython/ports/esp32/
+          BOARD_DIR="micropython/ports/esp32/boards/ESP32_GENERIC_S3"
+          
+          # 1. Tworzymy tabelę partycji (4MB App, 11MB VFS)
+          cat <<EOF > ${BOARD_DIR}/partitions.csv
+          # Name,   Type, SubType, Offset,  Size, Flags
+          nvs,      data, nvs,     0x9000,  0x6000,
+          otadata,  data, ota,     0xf000,  0x2000,
+          phy_init, data, phy,     0x11000, 0x1000,
+          factory,  app,  factory, 0x20000, 0x400000,
+          vfs,      data, fat,     0x420000, 0xB00000,
+          EOF
 
-      - name: Copy custom partition table
-        run: |
-          cp partitions.csv micropython/ports/esp32/boards/ESP32_GENERIC_S3/
+          # 2. Tworzymy sdkconfig.board wymuszający Octal SPIRAM i 1.8V
+          # To rozwiązuje konflikt pinów 6/7 z PSRAM
+          cat <<EOF > ${BOARD_DIR}/sdkconfig.board
+          CONFIG_SPIRAM=y
+          CONFIG_SPIRAM_MODE_OCT=y
+          CONFIG_SPIRAM_SPEED_80M=y
+          CONFIG_SPIRAM_BOOT_INIT=y
+          CONFIG_ESP32S3_FLASH_VOLTAGE_1_8V=y
+          CONFIG_ESP32S3_SPIRAM_VOLTAGE_1_8V=y
+          CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
+          CONFIG_BOARD_PARTITION_TABLE="partitions.csv"
+          EOF
 
-      - name: Patch ESP32-S3 SPIRAM USB board to include LVGL + partitions
+      - name: Build MicroPython + LVGL
         run: |
-          BOARD_CMAKE="micropython/ports/esp32/boards/ESP32_GENERIC_S3/mpconfigvariant_SPIRAM_OCT.cmake"
-          {
-            echo 'set(LVGL_DIR "${MICROPY_DIR}/lib/lvgl")'
-            echo 'set(LV_BINDINGS_DIR "${MICROPY_DIR}/lib/lv_bindings")'
-            echo 'include(${LV_BINDINGS_DIR}/lvgl.cmake)'
-            echo 'set(BOARD_PARTITION_TABLE "${MICROPY_BOARD_DIR}/partitions.csv")'
-          } >> "${BOARD_CMAKE}"
-
-      - name: Build MicroPython + LVGL for ESP32-S3 SPIRAM USB
-        run: |
-          . esp-idf/export.sh
+          source esp-idf/export.sh
+          
+          # 1. Najpierw mpy-cross
+          make -C micropython/mpy-cross
+          
+          # 2. Port ESP32
           cd micropython/ports/esp32
           make submodules
-          make BOARD=ESP32_GENERIC_S3_SPIRAM
+          
+          # 3. Kompilacja z LVGL jako modułem C
+          # Zwróć uwagę na ścieżkę do bindings.cmake (względem ports/esp32)
+          make BOARD=ESP32_GENERIC_S3 \
+               USER_C_MODULES=../../../lib/lv_bindings/bindings.cmake
         shell: bash
 
       - name: Upload firmware artifact
         uses: actions/upload-artifact@v4
         with:
-          name: firmware-esp32s3-spiram-usb-lvgl
-          path: |
-            micropython/ports/esp32/build-ESP32_GENERIC_S3_SPIRAM/firmware.bin
-            micropython/ports/esp32/build-ESP32_GENERIC_S3_SPIRAM/firmware.elf
+          name: firmware-esp32s3-n16r8-lvgl
+          path: micropython/ports/esp32/build-ESP32_GENERIC_S3/firmware.bin
