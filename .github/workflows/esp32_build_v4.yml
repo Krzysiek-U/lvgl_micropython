@@ -48,18 +48,21 @@ jobs:
           # 1. Budujemy mpy-cross
           make -C micropython/mpy-cross
           
-          # 2. Inicjalizacja WSZYSTKICH submodułów (naprawia błąd btree / berkeley-db)
+          # 2. Inicjalizacja submodułów
           cd micropython
           git submodule update --init --recursive
           
-          # 3. Kompilacja portu ESP32
+          # 3. Kopiowanie lv_conf.h (wychodzimy z micropython/ do głównego folderu repo)
+          cp ../lv_conf.h ports/esp32/
+          
+          # 4. Submoduły portu
           cd ports/esp32
-          # Wymuszamy pobranie submodułów specyficznych dla portu (np. btree)
           make BOARD=ESP32_GENERIC_S3 submodules
           
-          # 4. Główne budowanie z LVGL
+          # 5. Kompilacja właściwa
           make BOARD=ESP32_GENERIC_S3 USER_C_MODULES=../../lib/lv_bindings/bindings.cmake
         shell: bash
+
 
 
       - name: Artifacts
