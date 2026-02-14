@@ -16,14 +16,17 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y git wget flex bison gperf cmake ninja-build ccache libffi-dev libssl-dev dfu-util libusb-1.0-0 python3 python3-pip
 
-      - name: Clone-MPY
-        run: git clone --depth 1 --branch v1.22.2 https://github.com micropython
-
-      - name: Clone-IDF
-        run: git clone --depth 1 --branch v5.0.4 --recursive https://github.com esp-idf
-
-      - name: Clone-LVGL
-        run: git clone --recursive https://github.com micropython/lib/lv_bindings
+      - name: Clone-Repos
+        run: |
+          # Dynamiczne składanie adresów, aby ominąć błąd parsera
+          MPY="https://github.com/""micropython/micropython.git"
+          IDF="https://github.com/""espressif/esp-idf.git"
+          LVB="https://github.com/""lvgl/lv_binding_micropython.git"
+          
+          git clone --depth 1 --branch v1.22.2 "$MPY" micropython
+          git clone --depth 1 --branch v5.0.4 --recursive "$IDF" esp-idf
+          git clone --recursive "$LVB" micropython/lib/lv_bindings
+        shell: bash
 
       - name: Install-IDF
         run: |
@@ -31,27 +34,12 @@ jobs:
           ./install.sh esp32s3
         shell: bash
 
-      - name: Config
+      - name: Config-Board
         run: |
           BOARD_DIR="micropython/ports/esp32/boards/ESP32_GENERIC_S3"
-          cat <<EOF > ${BOARD_DIR}/partitions.csv
-          # Name, Type, SubType, Offset, Size, Flags
-          nvs, data, nvs, 0x9000, 0x6000,
-          otadata, data, ota, 0xf000, 0x2000,
-          phy_init, data, phy, 0x11000, 0x1000,
-          factory, app, factory, 0x20000, 0x600000,
-          vfs, data, fat, 0x620000, 0x900000,
-          EOF
-          cat <<EOF > ${BOARD_DIR}/sdkconfig.board
-          CONFIG_SPIRAM=y
-          CONFIG_SPIRAM_MODE_OCT=y
-          CONFIG_SPIRAM_SPEED_80M=y
-          CONFIG_SPIRAM_BOOT_INIT=y
-          CONFIG_ESP32S3_FLASH_VOLTAGE_1_8V=y
-          CONFIG_ESP32S3_SPIRAM_VOLTAGE_1_8V=y
-          CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
-          CONFIG_BOARD_PARTITION_TABLE="partitions.csv"
-          EOF
+          printf "nvs, data, nvs, 0x9000, 0x6000,\notadata, data, ota, 0xf000, 0x2000,\nphy_init, data, phy, 0x11000, 0x1000,\nfactory, app, factory, 0x20000, 0x600000,\nvfs, data, fat, 0x620000, 0x900000,\n" > ${BOARD_DIR}/partitions.csv
+          
+          printf "CONFIG_SPIRAM=y\nCONFIG_SPIRAM_MODE_OCT=y\nCONFIG_SPIRAM_SPEED_80M=y\nCONFIG_SPIRAM_BOOT_INIT=y\nCONFIG_ESP32S3_FLASH_VOLTAGE_1_8V=y\nCONFIG_ESP32S3_SPIRAM_VOLTAGE_1_8V=y\nCONFIG_ESPTOOLPY_FLASHSIZE_16MB=y\nCONFIG_BOARD_PARTITION_TABLE=\"partitions.csv\"\n" > ${BOARD_DIR}/sdkconfig.board
 
       - name: Build-All
         run: |
