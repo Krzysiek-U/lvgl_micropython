@@ -18,8 +18,8 @@ jobs:
 
       - name: Clone-Repos
         run: |
-          git clone --depth 1 --branch v1.22.2 https://github.com
-          git clone -b v5.0.4 --depth 1 --recursive https://github.com
+          git clone --depth 1 --branch v1.22.2 https://github.com micropython
+          git clone -b v5.0.4 --depth 1 --recursive https://github.com esp-idf
           git clone --recursive https://github.com micropython/lib/lv_bindings
           cd micropython/lib/lv_bindings && git submodule update --init --recursive
 
@@ -55,15 +55,10 @@ jobs:
       - name: Build-All
         run: |
           source esp-idf/export.sh
-          # Dodajemy brakujący komponent LCD dla IDF 5.x
-          pip install idf-component-manager
-          
           make -C micropython/mpy-cross
           cd micropython && git submodule update --init --recursive
           cp ../lv_conf.h ports/esp32/
-          
           cd ports/esp32
-          # Używamy absolutnej ścieżki do modułów (PWD)
           make BOARD=ESP32_GENERIC_S3 submodules
           make BOARD=ESP32_GENERIC_S3 USER_C_MODULES=$(pwd)/../../lib/lv_bindings/bindings.cmake
         shell: bash
