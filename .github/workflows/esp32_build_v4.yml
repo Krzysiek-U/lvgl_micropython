@@ -18,41 +18,35 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y git wget flex bison gperf cmake ninja-build ccache libffi-dev libssl-dev dfu-util libusb-1.0-0 python3 python3-pip
 
-      - name: Clone MicroPython (v1.22.2)
+      - name: Clone MicroPython
         run: |
-          # Używamy stabilnej wersji v1.22.2, która świetnie działa z LVGL 8.3
           git clone --depth=1 --branch v1.22.2 https://github.com
           cd micropython
           git submodule update --init --recursive lib/berkeley-db-1.85 lib/mbedtls lib/tinyusb
 
-      - name: Clone ESP-IDF (v5.0.4)
+      - name: Clone ESP-IDF
         run: |
-          # v5.0.4 ma wszystkie sterowniki SPI i LCD "na miejscu" (unikniesz błędu add-dependency)
           git clone -b v5.0.4 --depth=1 --recursive https://github.com
           cd esp-idf
           ./install.sh esp32s3
 
       - name: Clone LVGL Micropython bindings
         run: |
-          # Klonujemy bindings i ich submoduł lvgl
-          git clone --recursive https://github.com lib/lv_bindings
+          git clone --recursive https://github.com micropython/lib/lv_bindings
 
-      - name: Prepare Board Config (N16R8 Octal + 16MB Flash)
+      - name: Prepare Board Config
         run: |
           BOARD_DIR="micropython/ports/esp32/boards/ESP32_GENERIC_S3"
           
-          # 1. Tworzymy tabelę partycji (4MB App, 11MB VFS)
           cat <<EOF > ${BOARD_DIR}/partitions.csv
           # Name,   Type, SubType, Offset,  Size, Flags
           nvs,      data, nvs,     0x9000,  0x6000,
           otadata,  data, ota,     0xf000,  0x2000,
           phy_init, data, phy,     0x11000, 0x1000,
-          factory,  app,  factory, 0x20000, 0x400000,
-          vfs,      data, fat,     0x420000, 0xB00000,
+          factory,  app,  factory, 0x20000, 0x600000,
+          vfs,      data, fat,     0x620000, 0x900000,
           EOF
 
-          # 2. Tworzymy sdkconfig.board wymuszający Octal SPIRAM i 1.8V
-          # To rozwiązuje konflikt pinów 6/7 z PSRAM
           cat <<EOF > ${BOARD_DIR}/sdkconfig.board
           CONFIG_SPIRAM=y
           CONFIG_SPIRAM_MODE_OCT=y
@@ -67,18 +61,11 @@ jobs:
       - name: Build MicroPython + LVGL
         run: |
           source esp-idf/export.sh
-          
-          # 1. Najpierw mpy-cross
           make -C micropython/mpy-cross
-          
-          # 2. Port ESP32
-          cd micropython/ports/esp32
+          cd micropython
           make submodules
-          
-          # 3. Kompilacja z LVGL jako modułem C
-          # Zwróć uwagę na ścieżkę do bindings.cmake (względem ports/esp32)
-          make BOARD=ESP32_GENERIC_S3 \
-               USER_C_MODULES=../../../lib/lv_bindings/bindings.cmake
+          cd ports/esp32
+          make BOARD=ESP32_GENERIC_S3 USER_C_MODULES=../../lib/lv_bindings/bindings.cmake
         shell: bash
 
       - name: Upload firmware artifact
