@@ -20,13 +20,13 @@ jobs:
 
       - name: Clone MicroPython
         run: |
-          git clone --depth=1 --branch v1.22.2 https://github.com
+          git clone --depth 1 --branch v1.22.2 https://github.com
           cd micropython
           git submodule update --init --recursive lib/berkeley-db-1.85 lib/mbedtls lib/tinyusb
 
       - name: Clone ESP-IDF
         run: |
-          git clone -b v5.0.4 --depth=1 --recursive https://github.com
+          git clone -b v5.0.4 --depth 1 --recursive https://github.com
           cd esp-idf
           ./install.sh esp32s3
 
@@ -37,16 +37,14 @@ jobs:
       - name: Prepare Board Config
         run: |
           BOARD_DIR="micropython/ports/esp32/boards/ESP32_GENERIC_S3"
-          
           cat <<EOF > ${BOARD_DIR}/partitions.csv
-          # Name,   Type, SubType, Offset,  Size, Flags
-          nvs,      data, nvs,     0x9000,  0x6000,
-          otadata,  data, ota,     0xf000,  0x2000,
-          phy_init, data, phy,     0x11000, 0x1000,
-          factory,  app,  factory, 0x20000, 0x600000,
-          vfs,      data, fat,     0x620000, 0x900000,
+          # Name, Type, SubType, Offset, Size, Flags
+          nvs, data, nvs, 0x9000, 0x6000,
+          otadata, data, ota, 0xf000, 0x2000,
+          phy_init, data, phy, 0x11000, 0x1000,
+          factory, app, factory, 0x20000, 0x600000,
+          vfs, data, fat, 0x620000, 0x900000,
           EOF
-
           cat <<EOF > ${BOARD_DIR}/sdkconfig.board
           CONFIG_SPIRAM=y
           CONFIG_SPIRAM_MODE_OCT=y
