@@ -1,5 +1,4 @@
-name: Build-ESP32-S3-LVGL
-
+name: Build-LVGL
 on:
   workflow_dispatch:
   push:
@@ -8,33 +7,31 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    env:
-      MPY_URL: "https://github.com"
-      IDF_URL: "https://github.com"
-      LV_URL: "https://github.com"
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install dependencies
+      - name: Deps
         run: |
-          sudo apt update
-          sudo apt install -y git wget flex bison gperf cmake ninja-build ccache libffi-dev libssl-dev dfu-util libusb-1.0-0 python3 python3-pip
+          sudo apt-get update
+          sudo apt-get install -y git wget flex bison gperf cmake ninja-build ccache libffi-dev libssl-dev dfu-util libusb-1.0-0 python3 python3-pip
 
-      - name: Clone repositories
-        run: |
-          git clone --depth 1 --branch v1.22.2 "$MPY_URL" micropython
-          git clone --depth 1 --branch v5.0.4 --recursive "$IDF_URL" esp-idf
-          git clone --recursive "$LV_URL" micropython/lib/lv_bindings
+      - name: Clone-MPY
+        run: git clone --depth 1 --branch v1.22.2 https://github.com micropython
 
-      - name: Install ESP-IDF
+      - name: Clone-IDF
+        run: git clone --depth 1 --branch v5.0.4 --recursive https://github.com esp-idf
+
+      - name: Clone-LVGL
+        run: git clone --recursive https://github.com micropython/lib/lv_bindings
+
+      - name: Install-IDF
         run: |
           cd esp-idf
           ./install.sh esp32s3
         shell: bash
 
-      - name: Setup Board Configuration
+      - name: Config
         run: |
           BOARD_DIR="micropython/ports/esp32/boards/ESP32_GENERIC_S3"
           cat <<EOF > ${BOARD_DIR}/partitions.csv
@@ -56,19 +53,17 @@ jobs:
           CONFIG_BOARD_PARTITION_TABLE="partitions.csv"
           EOF
 
-      - name: Build Firmware
+      - name: Build-All
         run: |
           source esp-idf/export.sh
           make -C micropython/mpy-cross
-          cd micropython
-          git submodule update --init --recursive lib/berkeley-db-1.85 lib/mbedtls lib/tinyusb
-          make submodules
+          cd micropython && git submodule update --init --recursive lib/berkeley-db-1.85 lib/mbedtls lib/tinyusb && make submodules
           cd ports/esp32
           make BOARD=ESP32_GENERIC_S3 USER_C_MODULES=../../lib/lv_bindings/bindings.cmake
         shell: bash
 
-      - name: Upload Artifacts
+      - name: Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: firmware-esp32s3-lvgl
+          name: firmware-lvgl
           path: micropython/ports/esp32/build-ESP32_GENERIC_S3/firmware.bin
